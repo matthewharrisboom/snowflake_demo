@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: "Print SF_DATABASE"
         run: echo "SF_DATABASE=$SF_DATABASE"
+      - name: "Print SNOWFLAKE_PASSWORD"
+        run: echo "SNOWFLAKE_PASSWORD=$SNOWFLAKE_PASSWORD"
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
         uses: actions/checkout@v2

@@ -8,7 +8,7 @@ on:
         type: string
 
 jobs:
-  deploy-${{ inputs.my_env }}:
+  deploy-snowflake:
     runs-on: ubuntu-latest
     environment: ${{ inputs.my_env }}
     env:

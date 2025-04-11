@@ -1,14 +1,16 @@
+name: Deploy to Snowflake
+
 on:
   workflow_call:
     inputs:
-      environment:
+      my_env:
         required: true
         type: string
 
 jobs:
-  deploy-${{ inputs.environment }}:
+  deploy-${{ inputs.my_env }}:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ inputs.my_env }}
     env:
       SF_ACCOUNT: ${{ vars.SF_ACCOUNT }}
       SF_USERNAME: ${{ vars.SF_USER }}

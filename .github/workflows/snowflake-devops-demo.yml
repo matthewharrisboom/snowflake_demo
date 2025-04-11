@@ -15,7 +15,20 @@ jobs:
   deploy-dev:
     runs-on: ubuntu-latest
     environment: dev
+    env:
+      SF_ACCOUNT: ${{ inputs.SF_ACCOUNT }}
+      SF_USERNAME: ${{ inputs.SF_USER }}
+      SF_ROLE: ${{ inputs.SF_ROLE }}
+      SF_WAREHOUSE: ${{ inputs.SF_WAREHOUSE }}
+      SF_DATABASE: ${{ inputs.SF_DATABASE }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
     steps:
+      - name: "Print SF_ACCOUNT"
+        run: echo "SF_ACCOUNT=$SF_ACCOUNT"
+      - name: "Print SF_USERNAME"
+        run: echo "SF_USERNAME=$SF_USERNAME"
+      - name: "Print SNOWFLAKE_PASSWORD"
+        run: echo "SNOWFLAKE_PASSWORD=$SNOWFLAKE_PASSWORD"
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -26,13 +39,13 @@ jobs:
           python-version: 3.8.x
 
       - name: Run schemachange
-        env:
-          SF_ACCOUNT: ${{ inputs.SF_ACCOUNT }}
-          SF_USERNAME: ${{ inputs.SF_USER }}
-          SF_ROLE: ${{ inputs.SF_ROLE }}
-          SF_WAREHOUSE: ${{ inputs.SF_WAREHOUSE }}
-          SF_DATABASE: ${{ inputs.SF_DATABASE }}
-          SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
+        #env:
+        #  SF_ACCOUNT: ${{ inputs.SF_ACCOUNT }}
+        #  SF_USERNAME: ${{ inputs.SF_USER }}
+        #  SF_ROLE: ${{ inputs.SF_ROLE }}
+        #  SF_WAREHOUSE: ${{ inputs.SF_WAREHOUSE }}
+        #  SF_DATABASE: ${{ inputs.SF_DATABASE }}
+        #  SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
         run: |
           echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
           python --version
@@ -44,6 +57,13 @@ jobs:
   deploy-prod:
     runs-on: ubuntu-latest
     environment: prod
+    env:
+      SF_ACCOUNT: ${{ inputs.SF_ACCOUNT }}
+      SF_USERNAME: ${{ inputs.SF_USER }}
+      SF_ROLE: ${{ inputs.SF_ROLE }}
+      SF_WAREHOUSE: ${{ inputs.SF_WAREHOUSE }}
+      SF_DATABASE: ${{ inputs.SF_DATABASE }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
@@ -55,13 +75,13 @@ jobs:
           python-version: 3.8.x
 
       - name: Run schemachange
-        env:
-          SF_ACCOUNT: ${{ inputs.SF_ACCOUNT }}
-          SF_USERNAME: ${{ inputs.SF_USER }}
-          SF_ROLE: ${{ inputs.SF_ROLE }}
-          SF_WAREHOUSE: ${{ inputs.SF_WAREHOUSE }}
-          SF_DATABASE: ${{ inputs.SF_DATABASE }}
-          SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
+        #env:
+        #  SF_ACCOUNT: ${{ inputs.SF_ACCOUNT }}
+        #  SF_USERNAME: ${{ inputs.SF_USER }}
+        #  SF_ROLE: ${{ inputs.SF_ROLE }}
+        #  SF_WAREHOUSE: ${{ inputs.SF_WAREHOUSE }}
+        #  SF_DATABASE: ${{ inputs.SF_DATABASE }}
+        #  SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
         run: |
           echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
           python --version

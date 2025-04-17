@@ -22,10 +22,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      #- name: Use Python 3.10.7
-      #  uses: actions/setup-python@v2.2.1
-      #  with:
-      #    python-version: 3.10.7
+      - name: Set up Python and dependencies
+        run: pip install jinja2 pyyaml
+
+      - name: Create output folder
+        run: mkdir -p rendered
+
+      - name: Render SQL template
+        run: python render.py ${{ inputs.my_env || 'dev' }}
 
       - name: Download SnowSQL
         run:  curl -O https://sfc-repo.snowflakecomputing.com/snowsql/bootstrap/1.3/linux_x86_64/snowsql-1.3.3-linux_x86_64.bash
@@ -37,4 +41,4 @@ jobs:
         run:  ~/snowflake/snowsql -v
 
       - name: Deploy SQL to Snowflake
-        run: ~/snowflake/snowsql -f structure/database.sql
+        run: ~/snowflake/snowsql -f rendered/create_database_${{ inputs.my_env || 'dev' }}.sql

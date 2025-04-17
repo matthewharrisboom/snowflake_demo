@@ -37,4 +37,8 @@ jobs:
         run:  ~/snowflake/snowsql -v
 
       - name: Deploy SQL to Snowflake
-        run: ~/snowflake/snowsql -f structure/database.sql -o log_level=DEBUG
+        run: |
+          ./snowsql -a $SNOWSQL_ACCOUNT \
+                -u $SNOWSQL_USER \
+                -p $SNOWSQL_PWD \
+                 -f structure/database.sql

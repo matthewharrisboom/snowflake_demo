@@ -38,7 +38,7 @@ jobs:
 
       - name: Deploy SQL to Snowflake
         run: |
-          ./snowsql -a $SNOWSQL_ACCOUNT \
+          ~/snowflake/snowsql -a $SNOWSQL_ACCOUNT \
                 -u $SNOWSQL_USER \
                 -p $SNOWSQL_PWD \
                  -f structure/database.sql

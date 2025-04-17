@@ -12,12 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.my_env }}
     env:
-      SF_ACCOUNT: ${{ vars.SF_ACCOUNT }}
-      SF_USERNAME: ${{ vars.SF_USER }}
-      SF_ROLE: ${{ vars.SF_ROLE }}
-      SF_WAREHOUSE: ${{ vars.SF_WAREHOUSE }}
-      SF_DATABASE: ${{ vars.SF_DATABASE }}
-      SNOWFLAKE_PASSWORD: ${{ secrets.SF_PASSWORD }}
+      SNOWSQL_ACCOUNT: ${{ vars.SF_ACCOUNT }}
+      SNOWSQL_USER: ${{ vars.SF_USER }}
+      SNOWSQL_ROLE: ${{ vars.SF_ROLE }}
+      #SF_WAREHOUSE: ${{ vars.SF_WAREHOUSE }}
+      #SF_DATABASE: ${{ vars.SF_DATABASE }}
+      SNOWSQL_PWD: ${{ secrets.SF_PASSWORD }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -32,9 +32,4 @@ jobs:
         run:  ~/snowflake/snowsql -v
 
       - name: Deploy SQL to Snowflake
-        run: |
-          ~/snowflake/snowsql -a $SF_ACCOUNT \
-                    -u $SF_USERNAME \
-                    -p $SNOWFLAKE_PASSWORD \
-                    -r $SF_ROLE \
-                    -f structure/database.sql
+        run: ~/snowflake/snowsql -f structure/database.sql

@@ -30,10 +30,10 @@ jobs:
       
       - name: Test installation
         run:  ~/snowflake/snowsql -v
-        
+
       - name: Deploy SQL to Snowflake
         run: |
-          ./snowsql -a $SF_ACCOUNT \
+          ~/snowflake/snowsql -a $SF_ACCOUNT \
                     -u $SF_USERNAME \
                     -p $SNOWFLAKE_PASSWORD \
                     -r $SF_ROLE \

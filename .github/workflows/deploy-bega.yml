@@ -22,12 +22,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Download SnowSQL
+        run:  curl -O https://sfc-repo.snowflakecomputing.com/snowsql/bootstrap/1.2/linux_x86_64/snowsql-1.2.9-linux_x86_64.bash
+      
       - name: Install SnowSQL
-        run: |
-          curl -O https://sfc-repo.snowflakecomputing.com/snowsql/bootstrap/1.2/linux_x86_64/snowsql-linux_x86_64.zip
-          unzip snowsql-linux_x86_64.zip
-          ./snowsql-linux_x86_64/install --yes
-
+        run: SNOWSQL_DEST=~/snowflake SNOWSQL_LOGIN_SHELL=~/.profile bash snowsql-1.2.9-linux_x86_64.bash
+      
+      - name: Test installation
+        run:  ~/snowflake/snowsql -v
+        
       - name: Deploy SQL to Snowflake
         run: |
           ./snowsql -a $SF_ACCOUNT \

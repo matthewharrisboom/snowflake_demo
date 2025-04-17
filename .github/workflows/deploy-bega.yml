@@ -14,7 +14,7 @@ jobs:
     env:
       SNOWSQL_ACCOUNT: ${{ vars.SF_ACCOUNT }}
       SNOWSQL_USER: ${{ vars.SF_USER }}
-      SNOWSQL_ROLE: ${{ vars.SF_ROLE }}
+      #SNOWSQL_ROLE: ${{ vars.SF_ROLE }}
       #SF_WAREHOUSE: ${{ vars.SF_WAREHOUSE }}
       #SF_DATABASE: ${{ vars.SF_DATABASE }}
       SNOWSQL_PWD: ${{ secrets.SF_PASSWORD }}

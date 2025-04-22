@@ -13,6 +13,7 @@ on:
           - dev
           - uat
           - prod
+          - bega
 
 jobs:
   # deploy-dev:

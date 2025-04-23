@@ -6234,7 +6234,6 @@ from
 where
     h.ID is null                                    -- first time
     or p._FIVETRAN_SYNCED > h.MAX_FIVETRAN_SYNCED;
-create or replace schema BEGA_HR_DATA_{{ env }}.REPORTING;
 
 create or replace schema BEGA_HR_DATA_{{ env }}.STAGING;
 
@@ -6719,285 +6718,6 @@ select
     *
 from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_MONTHLY_LEAVE_HISTORY
 
-;
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_CALCULATION_HISTORY(
-	PAY_FREQUENCY_KEY,
-	WORKER_ID,
-	WORKER_CODE,
-	LOCATION_ID,
-	LEAVE_TYPE_ID,
-	LEAVE_TYPE_NAME,
-	LEAVE_CODE,
-	LEAVE_DESCRIPTION,
-	LEAVE_ID,
-	SICK_LEAVE_FIVETRAN_SYNCED,
-	ANNUAL_LEAVE_FIVETRAN_SYNCED,
-	LONG_SERVICE_LEAVE_FIVETRAN_SYNCED,
-	USER_DEFINED_LEAVE_FIVETRAN_SYNCED,
-	LEAVE_LOADING_ID,
-	LEAVE_LOADING_COD,
-	LEAVE_LOADING_DESCRIPTION,
-	LEAVE_LOADING_PERCENT,
-	LEAVE_LOADING_RATE_TYPE_ID,
-	LEAVE_LOADING_MAXIMUM_LOADING,
-	LEAVE_LOADING_FIVETRAN_SYNCED,
-	YTD_LOADING,
-	FIRST_ENTITLEMENT_PERIOD,
-	GRANT_ENTITLEMENT,
-	NON_ENTITLEMENT_MONTHS,
-	SUSPEND,
-	SUSPEND_FROM,
-	SUSPEND_TO,
-	POST_ENTITLEMENT_DATE,
-	POST_ENTITLEMENT_HOURS,
-	POST_ENTITLEMENT_DAYS,
-	ENTITLEMENT_LIABILITY_NORMAL_RATE,
-	ENTITLEMENT_LIABILITY_AWARD_RATE,
-	ENTITLEMENT_LIABILITY_OTHER_RATE,
-	POST_PRORATA_DATE,
-	POST_PRORATA_HOURS,
-	POST_PRORATA_DAYS,
-	PRORATA_LIABILITY_NORMAL_RATE,
-	PRORATA_LIABILITY_AWARD_RATE,
-	PRORATA_LIABILITY_OTHER_RATE,
-	POST_ENTITLEMENT_HOURS_PRORATA_CURRENT_YEAR,
-	POST_ENTITLEMENT_DAYS_PRORATA_CURRENT_YEAR,
-	LEAVE_TAKEN_DATE,
-	LEAVE_TAKEN_HOURS,
-	LEAVE_TAKEN_DAYS,
-	TAKEN_LIABILITY_NORMAL_RATE,
-	TAKEN_LIABILITY_AWARD_RATE,
-	TAKEN_LIABILITY_OTHER_RATE,
-	PRE_ENTITLEMENT_HOURS,
-	PRE_ENTITLEMENT_DAYS,
-	PRE_ENTITLEMENT_LIABILITY_NORMAL_RATE,
-	PRE_ENTITLEMENT_LIABILITY_AWARD_RATE,
-	PRE_ENTITLEMENT_LIABILITY_OTHER_RATE,
-	PRE_78_ENTITLEMENT_HOURS,
-	PRE_78_ENTITLEMENT_DAYS,
-	PRE_78_ENTITLEMENT_LIABILITY_NORMAL_RATE,
-	PRE_78_ENTITLEMENT_LIABILITY_AWARD_RATE,
-	PRE_78_ENTITLEMENT_LIABILITY_OTHER_RATE,
-	TOTAL_ENTITLEMENT_HOURS,
-	TOTAL_ENTITLEMENT_DAYS,
-	TOTAL_ENTITLEMENT_LIABILITY_NORMAL_RATE,
-	TOTAL_ENTITLEMENT_LIABILITY_AWARD_RATE,
-	TOTAL_ENTITLEMENT_LIABILITY_OTHER_RATE,
-	COST_ACCOUNT_ID,
-	COST_ACCOUNT_FIVETRAN_SYNCED,
-	LEAVE_SHIFTS,
-	COST_ACCOUNT_CODE,
-	COST_ACCOUNT_DESCRIPTION,
-	_FIVETRAN_SYNCED,
-	_FIVETRAN_START,
-	_FIVETRAN_END
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as
-
-WITH
-    cost_acc as (
-        select
-        	ca.PAY_FREQUENCY_KEY,
-            ca.IDCOSTACCOUNT as COST_ACCOUNT_ID,
-        	ca.CCOSTCODE as COST_ACCOUNT_CODE,
-        	ca.CDESCRIPTION as COST_ACCOUNT_DESCRIPTION,
-            ca._FIVETRAN_SYNCED
-        from BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_COST_ACCOUNT_HISTORY as ca
-        where
-            ca.BACTIVE = 1 
-            and ca.IPOSITION = ca.MAX_IPOSITION
-        )
-
-select
-    el.PAY_FREQUENCY_KEY,
-    el.iEmployeeID as WORKER_ID,
-    e.CEMPCODE as WORKER_CODE,
-    e.ilocationid as LOCATION_ID,   -- TODO: it doesn't always match with LOCATION from BEGA_HR_DATA_{{ env }}.CONTROL.PAYROLL_STANDARD_HOURS
-    case when udl.ccode = lt.leave_reason_code then
-           lt.leave_type_id
-         else
-           el.iLeaveType 
-         end as LEAVE_TYPE_ID,
-    case el.iLeaveType
-        when 0 then 'Sick'
-        when 1 then 'Annual'
-        when 2 then 'Long Service'
-        when 3 then 'Other'
-        when 4 then 'Public Holiday'
-        when 5 then 'Extra'
-        -- when 6 then 'User Defined'
-        when 6 then
-            case when udl.ccode = lt.leave_reason_code then
-                      -- lt.leave_reason_code
-                      lt.pay_component_desc
-                 else 
-                      'User Defined' 
-                 end
-        end LEAVE_TYPE_NAME,
-        
-    case el.iLeaveType
-        when 0 then sl.cCode
-        when 1 then al.cCode
-        when 2 then lsl.cCode
-        when 6 then
-            case when udl.ccode = lt.leave_reason_code then
-                       lt.leave_reason_code
-                 else 
-                      'Undefined'  -- leave code not defined
-                 end
-                 
-        -- original code
-        -- when 6 then udl.cCode
-        -- else udl.ccode  
-        
-        end as LEAVE_CODE,
-    case el.iLeaveType
-        when 0 then sl.cDescription
-        when 1 then al.cDescription
-        when 2 then lsl.cDescription
-        when 6 then udl.cDescription
-        else udl.cDescription
-        end as LEAVE_DESCRIPTION,
-    el.iLeaveClassID as LEAVE_ID,
-    el.SICK_LEAVE_FIVETRAN_SYNCED,
-    el.ANNUAL_LEAVE_FIVETRAN_SYNCED,
-    el.LONG_SERVICE_LEAVE_FIVETRAN_SYNCED,
-    el.USER_DEFINED_LEAVE_FIVETRAN_SYNCED,
-    el.iLeaveLoadingClassID as LEAVE_LOADING_ID, 
-	ll.cCode as LEAVE_LOADING_COD,
-	ll.cLoadingName as LEAVE_LOADING_DESCRIPTION,
-	ll.fLoadingPercent as LEAVE_LOADING_PERCENT,
-	ll.iRateTypeID as LEAVE_LOADING_RATE_TYPE_ID,
-	ll.fMaxLoading as LEAVE_LOADING_MAXIMUM_LOADING,
-    el.LEAVE_LOADING_FIVETRAN_SYNCED,
-    0 as YTD_LOADING,
-    case when el.bFirstEntPeriod = TRUE 
-        then 'Yes'
-        else 'No'
-        end as FIRST_ENTITLEMENT_PERIOD,
-    case when el.bGrant = TRUE 
-        then 'Yes'
-        else 'No'
-        end as GRANT_ENTITLEMENT,
-    el.iNonEntMonths as NON_ENTITLEMENT_MONTHS,
-    case when el.bSuspendEnt = TRUE 
-        then 'Yes'
-        else 'No'
-        end as SUSPEND,
-    el.dSuspendFrom as SUSPEND_FROM,
-    el.dSuspendTo as SUSPEND_TO,
-    el.dPostEntDate as POST_ENTITLEMENT_DATE,
-    el.fPostEntHours as POST_ENTITLEMENT_HOURS,
-    ifnull(el.fPostEntHours, 0) 
-        / ifnull(ch.fHoursPerDay, 1)
-        as POST_ENTITLEMENT_DAYS,
-    0 as ENTITLEMENT_LIABILITY_NORMAL_RATE,
-    0 as ENTITLEMENT_LIABILITY_AWARD_RATE,
-    0 as ENTITLEMENT_LIABILITY_OTHER_RATE,
-    el.dPostProDate as POST_PRORATA_DATE,
-    el.fPostProHours as POST_PRORATA_HOURS,
-    ifnull(el.fPostProHours, 0) 
-        / ifnull(ch.fHoursPerDay, 1)
-        as POST_PRORATA_DAYS,
-    0 as PRORATA_LIABILITY_NORMAL_RATE,
-    0 as PRORATA_LIABILITY_AWARD_RATE,
-    0 as PRORATA_LIABILITY_OTHER_RATE,
-    el.fCurrentAccrualHours as POST_ENTITLEMENT_HOURS_PRORATA_CURRENT_YEAR, 
-    el.fCurrentAccrualHours 
-        / ifnull(ch.fHoursPerDay, 1) 
-        as POST_ENTITLEMENT_DAYS_PRORATA_CURRENT_YEAR,
-    el.dTakenDate as LEAVE_TAKEN_DATE,
-    el.fTakenHours as LEAVE_TAKEN_HOURS,
-    ifnull(el.fTakenHours, 0) 
-        / ifnull(ch.fHoursPerDay, 1) 
-        as LEAVE_TAKEN_DAYS,
-    0 as TAKEN_LIABILITY_NORMAL_RATE,
-    0 as TAKEN_LIABILITY_AWARD_RATE,
-    0 as TAKEN_LIABILITY_OTHER_RATE,
-    el.fPreEntHours as PRE_ENTITLEMENT_HOURS,
-    ifnull(el.fPreEntHours, 0) 
-        / ifnull(ch.fHoursPerDay, 1) 
-        as PRE_ENTITLEMENT_DAYS,
-    0 as PRE_ENTITLEMENT_LIABILITY_NORMAL_RATE,
-    0 as PRE_ENTITLEMENT_LIABILITY_AWARD_RATE,
-    0 as PRE_ENTITLEMENT_LIABILITY_OTHER_RATE,
-    el.fPre78EntHours as PRE_78_ENTITLEMENT_HOURS,
-    ifnull(el.fPre78EntHours, 0) 
-        / ifnull(ch.fHoursPerDay, 1) 
-        as PRE_78_ENTITLEMENT_DAYS,
-    0 as PRE_78_ENTITLEMENT_LIABILITY_NORMAL_RATE,
-    0 as PRE_78_ENTITLEMENT_LIABILITY_AWARD_RATE,
-    0 as PRE_78_ENTITLEMENT_LIABILITY_OTHER_RATE,
-    (
-        ifnull(el.fPostEntHours, 0) 
-        + ifnull(el.fPostProHours, 0) 
-        + ifnull(el.fPreEntHours, 0) 
-        - ifnull(el.fTakenHours, 0)
-        ) as TOTAL_ENTITLEMENT_HOURS,
-    (
-        ifnull(el.fPostEntHours, 0) 
-        + ifnull(el.fPostProHours, 0) 
-        + ifnull(el.fPreEntHours, 0) 
-        - ifnull(el.fTakenHours, 0)
-        ) 
-        / ifnull(ch.fHoursPerDay, 1)
-        as TOTAL_ENTITLEMENT_DAYS,
-    0 as TOTAL_ENTITLEMENT_LIABILITY_NORMAL_RATE,
-    0 as TOTAL_ENTITLEMENT_LIABILITY_AWARD_RATE,
-    0 as TOTAL_ENTITLEMENT_LIABILITY_OTHER_RATE,	
-    el.iCostAccountID as COST_ACCOUNT_ID,
-    el.COST_ACCOUNT_FIVETRAN_SYNCED,
-    el.fLeaveShifts as LEAVE_SHIFTS,
-	ca.COST_ACCOUNT_CODE,
-	ca.COST_ACCOUNT_DESCRIPTION,
-    el._FIVETRAN_SYNCED,
-    el._FIVETRAN_START,
-    el._FIVETRAN_END
-
-from
-    BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_HISTORY as el
-    
-    -- related tables
-    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_WORKER_HISTORY as e on 
-        el.PAY_FREQUENCY_KEY = e.PAY_FREQUENCY_KEY
-        and el.IEMPLOYEEID = e.IDEMPLOYEE
-        and el.EMPLOYEE_FIVETRAN_SYNCED = e._FIVETRAN_SYNCED
-    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_WORKER_CONTRACT_HOUR_HISTORY as ch on 
-        e.PAY_FREQUENCY_KEY = ch.PAY_FREQUENCY_KEY
-        and e.ICONTRACTHOURSID = ch.IDCONTRACTHOURS
-        and e.CONTRACT_HOUR_FIVETRAN_SYNCED = ch._FIVETRAN_SYNCED
-    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_LOADING_HISTORY as ll on 
-        ll.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
-        and ll.IDLOADING = el.iLeaveLoadingClassID
-        and ll._FIVETRAN_SYNCED = el.LEAVE_LOADING_FIVETRAN_SYNCED
-    left join cost_acc as ca on 
-        ca.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
-        and ca.COST_ACCOUNT_ID = el.iCostAccountID
-        and ca._FIVETRAN_SYNCED = el.COST_ACCOUNT_FIVETRAN_SYNCED
-        
-    -- leave types
-    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_SICK_HISTORY as sl on 
-        sl.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
-        and sl.IDLEAVE = el.iLeaveClassID
-        and sl._FIVETRAN_SYNCED = el.SICK_LEAVE_FIVETRAN_SYNCED
-        and el.iLeaveType = 0
-    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_ANNUAL_HISTORY as al on 
-        al.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
-        and al.IDLEAVE = el.iLeaveClassID
-        and al._FIVETRAN_SYNCED = el.ANNUAL_LEAVE_FIVETRAN_SYNCED
-        and el.iLeaveType = 1
-    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_LONG_SERVICE_HISTORY as lsl on 
-        lsl.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
-        and lsl.IDLEAVE = el.iLeaveClassID
-        and lsl._FIVETRAN_SYNCED = el.LONG_SERVICE_LEAVE_FIVETRAN_SYNCED
-        and el.iLeaveType = 2
-    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_USER_DEFINED_HISTORY as udl on 
-        udl.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
-        and udl.IDLEAVE = el.iLeaveClassID
-        and udl._FIVETRAN_SYNCED = el.USER_DEFINED_LEAVE_FIVETRAN_SYNCED
-        and el.iLeaveType = 6
-     left join BEGA_HR_DATA_{{ env }}.control.user_defined_leave_type as lt
-         on udl.ccode = lt.leave_reason_code
 ;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_LOADING_HISTORY(
 	PAY_FREQUENCY_KEY,
@@ -12567,6 +12287,286 @@ from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_MONTHLY_WORKER_HISTORY
 
 ;
 
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_CALCULATION_HISTORY(
+	PAY_FREQUENCY_KEY,
+	WORKER_ID,
+	WORKER_CODE,
+	LOCATION_ID,
+	LEAVE_TYPE_ID,
+	LEAVE_TYPE_NAME,
+	LEAVE_CODE,
+	LEAVE_DESCRIPTION,
+	LEAVE_ID,
+	SICK_LEAVE_FIVETRAN_SYNCED,
+	ANNUAL_LEAVE_FIVETRAN_SYNCED,
+	LONG_SERVICE_LEAVE_FIVETRAN_SYNCED,
+	USER_DEFINED_LEAVE_FIVETRAN_SYNCED,
+	LEAVE_LOADING_ID,
+	LEAVE_LOADING_COD,
+	LEAVE_LOADING_DESCRIPTION,
+	LEAVE_LOADING_PERCENT,
+	LEAVE_LOADING_RATE_TYPE_ID,
+	LEAVE_LOADING_MAXIMUM_LOADING,
+	LEAVE_LOADING_FIVETRAN_SYNCED,
+	YTD_LOADING,
+	FIRST_ENTITLEMENT_PERIOD,
+	GRANT_ENTITLEMENT,
+	NON_ENTITLEMENT_MONTHS,
+	SUSPEND,
+	SUSPEND_FROM,
+	SUSPEND_TO,
+	POST_ENTITLEMENT_DATE,
+	POST_ENTITLEMENT_HOURS,
+	POST_ENTITLEMENT_DAYS,
+	ENTITLEMENT_LIABILITY_NORMAL_RATE,
+	ENTITLEMENT_LIABILITY_AWARD_RATE,
+	ENTITLEMENT_LIABILITY_OTHER_RATE,
+	POST_PRORATA_DATE,
+	POST_PRORATA_HOURS,
+	POST_PRORATA_DAYS,
+	PRORATA_LIABILITY_NORMAL_RATE,
+	PRORATA_LIABILITY_AWARD_RATE,
+	PRORATA_LIABILITY_OTHER_RATE,
+	POST_ENTITLEMENT_HOURS_PRORATA_CURRENT_YEAR,
+	POST_ENTITLEMENT_DAYS_PRORATA_CURRENT_YEAR,
+	LEAVE_TAKEN_DATE,
+	LEAVE_TAKEN_HOURS,
+	LEAVE_TAKEN_DAYS,
+	TAKEN_LIABILITY_NORMAL_RATE,
+	TAKEN_LIABILITY_AWARD_RATE,
+	TAKEN_LIABILITY_OTHER_RATE,
+	PRE_ENTITLEMENT_HOURS,
+	PRE_ENTITLEMENT_DAYS,
+	PRE_ENTITLEMENT_LIABILITY_NORMAL_RATE,
+	PRE_ENTITLEMENT_LIABILITY_AWARD_RATE,
+	PRE_ENTITLEMENT_LIABILITY_OTHER_RATE,
+	PRE_78_ENTITLEMENT_HOURS,
+	PRE_78_ENTITLEMENT_DAYS,
+	PRE_78_ENTITLEMENT_LIABILITY_NORMAL_RATE,
+	PRE_78_ENTITLEMENT_LIABILITY_AWARD_RATE,
+	PRE_78_ENTITLEMENT_LIABILITY_OTHER_RATE,
+	TOTAL_ENTITLEMENT_HOURS,
+	TOTAL_ENTITLEMENT_DAYS,
+	TOTAL_ENTITLEMENT_LIABILITY_NORMAL_RATE,
+	TOTAL_ENTITLEMENT_LIABILITY_AWARD_RATE,
+	TOTAL_ENTITLEMENT_LIABILITY_OTHER_RATE,
+	COST_ACCOUNT_ID,
+	COST_ACCOUNT_FIVETRAN_SYNCED,
+	LEAVE_SHIFTS,
+	COST_ACCOUNT_CODE,
+	COST_ACCOUNT_DESCRIPTION,
+	_FIVETRAN_SYNCED,
+	_FIVETRAN_START,
+	_FIVETRAN_END
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as
+
+WITH
+    cost_acc as (
+        select
+        	ca.PAY_FREQUENCY_KEY,
+            ca.IDCOSTACCOUNT as COST_ACCOUNT_ID,
+        	ca.CCOSTCODE as COST_ACCOUNT_CODE,
+        	ca.CDESCRIPTION as COST_ACCOUNT_DESCRIPTION,
+            ca._FIVETRAN_SYNCED
+        from BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_COST_ACCOUNT_HISTORY as ca
+        where
+            ca.BACTIVE = 1 
+            and ca.IPOSITION = ca.MAX_IPOSITION
+        )
+
+select
+    el.PAY_FREQUENCY_KEY,
+    el.iEmployeeID as WORKER_ID,
+    e.CEMPCODE as WORKER_CODE,
+    e.ilocationid as LOCATION_ID,   -- TODO: it doesn't always match with LOCATION from BEGA_HR_DATA_{{ env }}.CONTROL.PAYROLL_STANDARD_HOURS
+    case when udl.ccode = lt.leave_reason_code then
+           lt.leave_type_id
+         else
+           el.iLeaveType 
+         end as LEAVE_TYPE_ID,
+    case el.iLeaveType
+        when 0 then 'Sick'
+        when 1 then 'Annual'
+        when 2 then 'Long Service'
+        when 3 then 'Other'
+        when 4 then 'Public Holiday'
+        when 5 then 'Extra'
+        -- when 6 then 'User Defined'
+        when 6 then
+            case when udl.ccode = lt.leave_reason_code then
+                      -- lt.leave_reason_code
+                      lt.pay_component_desc
+                 else 
+                      'User Defined' 
+                 end
+        end LEAVE_TYPE_NAME,
+        
+    case el.iLeaveType
+        when 0 then sl.cCode
+        when 1 then al.cCode
+        when 2 then lsl.cCode
+        when 6 then
+            case when udl.ccode = lt.leave_reason_code then
+                       lt.leave_reason_code
+                 else 
+                      'Undefined'  -- leave code not defined
+                 end
+                 
+        -- original code
+        -- when 6 then udl.cCode
+        -- else udl.ccode  
+        
+        end as LEAVE_CODE,
+    case el.iLeaveType
+        when 0 then sl.cDescription
+        when 1 then al.cDescription
+        when 2 then lsl.cDescription
+        when 6 then udl.cDescription
+        else udl.cDescription
+        end as LEAVE_DESCRIPTION,
+    el.iLeaveClassID as LEAVE_ID,
+    el.SICK_LEAVE_FIVETRAN_SYNCED,
+    el.ANNUAL_LEAVE_FIVETRAN_SYNCED,
+    el.LONG_SERVICE_LEAVE_FIVETRAN_SYNCED,
+    el.USER_DEFINED_LEAVE_FIVETRAN_SYNCED,
+    el.iLeaveLoadingClassID as LEAVE_LOADING_ID, 
+	ll.cCode as LEAVE_LOADING_COD,
+	ll.cLoadingName as LEAVE_LOADING_DESCRIPTION,
+	ll.fLoadingPercent as LEAVE_LOADING_PERCENT,
+	ll.iRateTypeID as LEAVE_LOADING_RATE_TYPE_ID,
+	ll.fMaxLoading as LEAVE_LOADING_MAXIMUM_LOADING,
+    el.LEAVE_LOADING_FIVETRAN_SYNCED,
+    0 as YTD_LOADING,
+    case when el.bFirstEntPeriod = TRUE 
+        then 'Yes'
+        else 'No'
+        end as FIRST_ENTITLEMENT_PERIOD,
+    case when el.bGrant = TRUE 
+        then 'Yes'
+        else 'No'
+        end as GRANT_ENTITLEMENT,
+    el.iNonEntMonths as NON_ENTITLEMENT_MONTHS,
+    case when el.bSuspendEnt = TRUE 
+        then 'Yes'
+        else 'No'
+        end as SUSPEND,
+    el.dSuspendFrom as SUSPEND_FROM,
+    el.dSuspendTo as SUSPEND_TO,
+    el.dPostEntDate as POST_ENTITLEMENT_DATE,
+    el.fPostEntHours as POST_ENTITLEMENT_HOURS,
+    ifnull(el.fPostEntHours, 0) 
+        / ifnull(ch.fHoursPerDay, 1)
+        as POST_ENTITLEMENT_DAYS,
+    0 as ENTITLEMENT_LIABILITY_NORMAL_RATE,
+    0 as ENTITLEMENT_LIABILITY_AWARD_RATE,
+    0 as ENTITLEMENT_LIABILITY_OTHER_RATE,
+    el.dPostProDate as POST_PRORATA_DATE,
+    el.fPostProHours as POST_PRORATA_HOURS,
+    ifnull(el.fPostProHours, 0) 
+        / ifnull(ch.fHoursPerDay, 1)
+        as POST_PRORATA_DAYS,
+    0 as PRORATA_LIABILITY_NORMAL_RATE,
+    0 as PRORATA_LIABILITY_AWARD_RATE,
+    0 as PRORATA_LIABILITY_OTHER_RATE,
+    el.fCurrentAccrualHours as POST_ENTITLEMENT_HOURS_PRORATA_CURRENT_YEAR, 
+    el.fCurrentAccrualHours 
+        / ifnull(ch.fHoursPerDay, 1) 
+        as POST_ENTITLEMENT_DAYS_PRORATA_CURRENT_YEAR,
+    el.dTakenDate as LEAVE_TAKEN_DATE,
+    el.fTakenHours as LEAVE_TAKEN_HOURS,
+    ifnull(el.fTakenHours, 0) 
+        / ifnull(ch.fHoursPerDay, 1) 
+        as LEAVE_TAKEN_DAYS,
+    0 as TAKEN_LIABILITY_NORMAL_RATE,
+    0 as TAKEN_LIABILITY_AWARD_RATE,
+    0 as TAKEN_LIABILITY_OTHER_RATE,
+    el.fPreEntHours as PRE_ENTITLEMENT_HOURS,
+    ifnull(el.fPreEntHours, 0) 
+        / ifnull(ch.fHoursPerDay, 1) 
+        as PRE_ENTITLEMENT_DAYS,
+    0 as PRE_ENTITLEMENT_LIABILITY_NORMAL_RATE,
+    0 as PRE_ENTITLEMENT_LIABILITY_AWARD_RATE,
+    0 as PRE_ENTITLEMENT_LIABILITY_OTHER_RATE,
+    el.fPre78EntHours as PRE_78_ENTITLEMENT_HOURS,
+    ifnull(el.fPre78EntHours, 0) 
+        / ifnull(ch.fHoursPerDay, 1) 
+        as PRE_78_ENTITLEMENT_DAYS,
+    0 as PRE_78_ENTITLEMENT_LIABILITY_NORMAL_RATE,
+    0 as PRE_78_ENTITLEMENT_LIABILITY_AWARD_RATE,
+    0 as PRE_78_ENTITLEMENT_LIABILITY_OTHER_RATE,
+    (
+        ifnull(el.fPostEntHours, 0) 
+        + ifnull(el.fPostProHours, 0) 
+        + ifnull(el.fPreEntHours, 0) 
+        - ifnull(el.fTakenHours, 0)
+        ) as TOTAL_ENTITLEMENT_HOURS,
+    (
+        ifnull(el.fPostEntHours, 0) 
+        + ifnull(el.fPostProHours, 0) 
+        + ifnull(el.fPreEntHours, 0) 
+        - ifnull(el.fTakenHours, 0)
+        ) 
+        / ifnull(ch.fHoursPerDay, 1)
+        as TOTAL_ENTITLEMENT_DAYS,
+    0 as TOTAL_ENTITLEMENT_LIABILITY_NORMAL_RATE,
+    0 as TOTAL_ENTITLEMENT_LIABILITY_AWARD_RATE,
+    0 as TOTAL_ENTITLEMENT_LIABILITY_OTHER_RATE,	
+    el.iCostAccountID as COST_ACCOUNT_ID,
+    el.COST_ACCOUNT_FIVETRAN_SYNCED,
+    el.fLeaveShifts as LEAVE_SHIFTS,
+	ca.COST_ACCOUNT_CODE,
+	ca.COST_ACCOUNT_DESCRIPTION,
+    el._FIVETRAN_SYNCED,
+    el._FIVETRAN_START,
+    el._FIVETRAN_END
+
+from
+    BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_HISTORY as el
+    
+    -- related tables
+    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_WORKER_HISTORY as e on 
+        el.PAY_FREQUENCY_KEY = e.PAY_FREQUENCY_KEY
+        and el.IEMPLOYEEID = e.IDEMPLOYEE
+        and el.EMPLOYEE_FIVETRAN_SYNCED = e._FIVETRAN_SYNCED
+    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_WORKER_CONTRACT_HOUR_HISTORY as ch on 
+        e.PAY_FREQUENCY_KEY = ch.PAY_FREQUENCY_KEY
+        and e.ICONTRACTHOURSID = ch.IDCONTRACTHOURS
+        and e.CONTRACT_HOUR_FIVETRAN_SYNCED = ch._FIVETRAN_SYNCED
+    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_LOADING_HISTORY as ll on 
+        ll.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
+        and ll.IDLOADING = el.iLeaveLoadingClassID
+        and ll._FIVETRAN_SYNCED = el.LEAVE_LOADING_FIVETRAN_SYNCED
+    left join cost_acc as ca on 
+        ca.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
+        and ca.COST_ACCOUNT_ID = el.iCostAccountID
+        and ca._FIVETRAN_SYNCED = el.COST_ACCOUNT_FIVETRAN_SYNCED
+        
+    -- leave types
+    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_SICK_HISTORY as sl on 
+        sl.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
+        and sl.IDLEAVE = el.iLeaveClassID
+        and sl._FIVETRAN_SYNCED = el.SICK_LEAVE_FIVETRAN_SYNCED
+        and el.iLeaveType = 0
+    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_ANNUAL_HISTORY as al on 
+        al.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
+        and al.IDLEAVE = el.iLeaveClassID
+        and al._FIVETRAN_SYNCED = el.ANNUAL_LEAVE_FIVETRAN_SYNCED
+        and el.iLeaveType = 1
+    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_LONG_SERVICE_HISTORY as lsl on 
+        lsl.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
+        and lsl.IDLEAVE = el.iLeaveClassID
+        and lsl._FIVETRAN_SYNCED = el.LONG_SERVICE_LEAVE_FIVETRAN_SYNCED
+        and el.iLeaveType = 2
+    left join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_USER_DEFINED_HISTORY as udl on 
+        udl.PAY_FREQUENCY_KEY = el.PAY_FREQUENCY_KEY
+        and udl.IDLEAVE = el.iLeaveClassID
+        and udl._FIVETRAN_SYNCED = el.USER_DEFINED_LEAVE_FIVETRAN_SYNCED
+        and el.iLeaveType = 6
+     left join BEGA_HR_DATA_{{ env }}.control.user_defined_leave_type as lt
+         on udl.ccode = lt.leave_reason_code
+;
+
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2025(
 	FISCAL_YEAR,
 	TERM_DATE,
@@ -12754,162 +12754,8 @@ order by _LINE
 limit 1000000000 offset 9 
 
  ;
- 
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET(
-	FISCAL_YEAR,
-	MANAGER_POSITION_F,
-	CC_NAME,
-	POSITION_CODE,
-	EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
-	TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
-	TERMINATION_TYPE,
-	SALARY_PLAN_BASE_AMOUNT,
-	SUPER_ON_STI_,
-	SICK_LEAVE_LIABILITY,
-	SALARY_CONTINUANCE,
-	ON_CALL_ALLOWANCE,
-	TOTAL_ALLOWANCES,
-	AL_LIABILITY,
-	TFR_MIDPOINT,
-	WORKER_CODE,
-	MONTHLY_SUPER,
-	LSL_LIABILITY,
-	MONTHLY_BDD_CAR_ALLOWANCE,
-	TOTAL_SUPER_BASE_ALLOWANCE_LSL,
-	STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
-	BOARD_ALLOWANCE,
-	BUSINESS_MOTOR_VEHICLE_ALLOWANCE,
-	HIGHER_DUTIES_ALLOWANCE_,
-	SHIFT_ALLOWANCE_,
-	EMPLOYEE_NAME_CALC_F,
-	MONTHLY_BASE_SALARY,
-	PAYROLL_TAX,
-	BDD_CAR_ALLOWANCE,
-	_FIVETRAN_SYNCED
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as
 
--- RS: 09/08/2024 Deduplicated FY25 budget data as duplicated positions
-with position_budget_2025_agg_cte as (
-select 
-       fiscal_year,
-       POSITION_CODE as POSITION_CODE,
-       MAX(ifnull(EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,'')) as EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
-       MAX(ifnull(WORKER_CODE,'')) as WORKER_CODE
-from BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2025
-group by all
-),
-position_budget_2025_dedup_cte as (
-select 
-       pb.fiscal_year,
-       pb.MANAGER_POSITION_F,
-       pb.CC_NAME,
-       pb.POSITION_CODE,
-       pb.EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
-       pb.TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
-       pb.TERMINATION_TYPE,
-       pb.SALARY_PLAN_BASE_AMOUNT,
-       pb.SUPER_ON_STI_,
-       pb.SICK_LEAVE_LIABILITY,
-       pb.SALARY_CONTINUANCE,
-       pb.ON_CALL_ALLOWANCE,
-       pb.TOTAL_ALLOWANCES,
-       pb.AL_LIABILITY,
-       pb.TFR_MIDPOINT,
-       pb.WORKER_CODE,
-       pb.MONTHLY_SUPER,
-       pb.LSL_LIABILITY,
-       pb.MONTHLY_BDD_CAR_ALLOWANCE,
-       pb.TOTAL_SUPER_BASE_ALLOWANCE_LSL,
-       pb.STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
-       pb.BOARD_ALLOWANCE,
-       pb.BUSINESS_MOTOR_VEHICLE_ALLOWANCE,    
-       pb.HIGHER_DUTIES_ALLOWANCE_,
-       pb.SHIFT_ALLOWANCE_,
-       pb.EMPLOYEE_NAME_CALC_F,
-       pb.MONTHLY_BASE_SALARY,
-       pb.PAYROLL_TAX,
-       pb.BDD_CAR_ALLOWANCE,
-       pb._fivetran_synced
-from BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2025 as pb
-inner join position_budget_2025_agg_cte as pba on
-    pba.fiscal_year = pb.fiscal_year
-    and pba.POSITION_CODE = pb.POSITION_CODE
-    and pba.EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA = ifnull(pb.EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,'')
-    and pba.WORKER_CODE = ifnull(pb.WORKER_CODE,'')
-)
 
-select 
-       fiscal_year,
-       MANAGER_POSITION_F,
-       CC_NAME,
-       POSITION_CODE,
-       EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
-       TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
-       TERMINATION_TYPE,
-       SALARY_PLAN_BASE_AMOUNT,
-       SUPER_ON_STI_,
-       SICK_LEAVE_LIABILITY,
-       SALARY_CONTINUANCE,
-       ON_CALL_ALLOWANCE,
-       TOTAL_ALLOWANCES,
-       AL_LIABILITY,
-       TFR_MIDPOINT,
-       WORKER_CODE,
-       MONTHLY_SUPER,
-       LSL_LIABILITY,
-       MONTHLY_BDD_CAR_ALLOWANCE,
-       TOTAL_SUPER_BASE_ALLOWANCE_LSL,
-       STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
-       BOARD_ALLOWANCE,
-       BUSINESS_MOTOR_VEHICLE_ALLOWANCE,    
-       HIGHER_DUTIES_ALLOWANCE_,
-       SHIFT_ALLOWANCE_,
-       EMPLOYEE_NAME_CALC_F,
-       MONTHLY_BASE_SALARY,
-       PAYROLL_TAX,
-       BDD_CAR_ALLOWANCE,
-       _fivetran_synced
-from BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2024
-
---
-union all
---
-
-select 
-       fiscal_year,
-       MANAGER_POSITION_F,
-       CC_NAME,
-       POSITION_CODE,
-       EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
-       TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
-       TERMINATION_TYPE,
-       SALARY_PLAN_BASE_AMOUNT,
-       SUPER_ON_STI_,
-       SICK_LEAVE_LIABILITY,
-       SALARY_CONTINUANCE,
-       ON_CALL_ALLOWANCE,
-       TOTAL_ALLOWANCES,
-       AL_LIABILITY,
-       TFR_MIDPOINT,
-       WORKER_CODE,
-       MONTHLY_SUPER,
-       LSL_LIABILITY,
-       MONTHLY_BDD_CAR_ALLOWANCE,
-       TOTAL_SUPER_BASE_ALLOWANCE_LSL,
-       STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
-       BOARD_ALLOWANCE,
-       BUSINESS_MOTOR_VEHICLE_ALLOWANCE,    
-       HIGHER_DUTIES_ALLOWANCE_,
-       SHIFT_ALLOWANCE_,
-       EMPLOYEE_NAME_CALC_F,
-       MONTHLY_BASE_SALARY,
-       PAYROLL_TAX,
-       BDD_CAR_ALLOWANCE,
-       _fivetran_synced
-from position_budget_2025_dedup_cte
-
-;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2024(
 	FISCAL_YEAR,
 	TERM_DATE,
@@ -13125,6 +12971,162 @@ select
 from BEGA_HR_LANDING_{{ env }}.{{ env }}_SPO_SNOWFLAKE_FINANCE.FY_24_OBT_BUDGET_V_6_Q_2_F_FY_24_OBT_BUDGET A
  order by _LINE
  limit 1000000000 offset 9       -- TODO-LATER: remove limitation
+;
+
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET(
+	FISCAL_YEAR,
+	MANAGER_POSITION_F,
+	CC_NAME,
+	POSITION_CODE,
+	EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
+	TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
+	TERMINATION_TYPE,
+	SALARY_PLAN_BASE_AMOUNT,
+	SUPER_ON_STI_,
+	SICK_LEAVE_LIABILITY,
+	SALARY_CONTINUANCE,
+	ON_CALL_ALLOWANCE,
+	TOTAL_ALLOWANCES,
+	AL_LIABILITY,
+	TFR_MIDPOINT,
+	WORKER_CODE,
+	MONTHLY_SUPER,
+	LSL_LIABILITY,
+	MONTHLY_BDD_CAR_ALLOWANCE,
+	TOTAL_SUPER_BASE_ALLOWANCE_LSL,
+	STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
+	BOARD_ALLOWANCE,
+	BUSINESS_MOTOR_VEHICLE_ALLOWANCE,
+	HIGHER_DUTIES_ALLOWANCE_,
+	SHIFT_ALLOWANCE_,
+	EMPLOYEE_NAME_CALC_F,
+	MONTHLY_BASE_SALARY,
+	PAYROLL_TAX,
+	BDD_CAR_ALLOWANCE,
+	_FIVETRAN_SYNCED
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as
+
+-- RS: 09/08/2024 Deduplicated FY25 budget data as duplicated positions
+with position_budget_2025_agg_cte as (
+select 
+       fiscal_year,
+       POSITION_CODE as POSITION_CODE,
+       MAX(ifnull(EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,'')) as EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
+       MAX(ifnull(WORKER_CODE,'')) as WORKER_CODE
+from BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2025
+group by all
+),
+position_budget_2025_dedup_cte as (
+select 
+       pb.fiscal_year,
+       pb.MANAGER_POSITION_F,
+       pb.CC_NAME,
+       pb.POSITION_CODE,
+       pb.EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
+       pb.TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
+       pb.TERMINATION_TYPE,
+       pb.SALARY_PLAN_BASE_AMOUNT,
+       pb.SUPER_ON_STI_,
+       pb.SICK_LEAVE_LIABILITY,
+       pb.SALARY_CONTINUANCE,
+       pb.ON_CALL_ALLOWANCE,
+       pb.TOTAL_ALLOWANCES,
+       pb.AL_LIABILITY,
+       pb.TFR_MIDPOINT,
+       pb.WORKER_CODE,
+       pb.MONTHLY_SUPER,
+       pb.LSL_LIABILITY,
+       pb.MONTHLY_BDD_CAR_ALLOWANCE,
+       pb.TOTAL_SUPER_BASE_ALLOWANCE_LSL,
+       pb.STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
+       pb.BOARD_ALLOWANCE,
+       pb.BUSINESS_MOTOR_VEHICLE_ALLOWANCE,    
+       pb.HIGHER_DUTIES_ALLOWANCE_,
+       pb.SHIFT_ALLOWANCE_,
+       pb.EMPLOYEE_NAME_CALC_F,
+       pb.MONTHLY_BASE_SALARY,
+       pb.PAYROLL_TAX,
+       pb.BDD_CAR_ALLOWANCE,
+       pb._fivetran_synced
+from BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2025 as pb
+inner join position_budget_2025_agg_cte as pba on
+    pba.fiscal_year = pb.fiscal_year
+    and pba.POSITION_CODE = pb.POSITION_CODE
+    and pba.EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA = ifnull(pb.EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,'')
+    and pba.WORKER_CODE = ifnull(pb.WORKER_CODE,'')
+)
+
+select 
+       fiscal_year,
+       MANAGER_POSITION_F,
+       CC_NAME,
+       POSITION_CODE,
+       EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
+       TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
+       TERMINATION_TYPE,
+       SALARY_PLAN_BASE_AMOUNT,
+       SUPER_ON_STI_,
+       SICK_LEAVE_LIABILITY,
+       SALARY_CONTINUANCE,
+       ON_CALL_ALLOWANCE,
+       TOTAL_ALLOWANCES,
+       AL_LIABILITY,
+       TFR_MIDPOINT,
+       WORKER_CODE,
+       MONTHLY_SUPER,
+       LSL_LIABILITY,
+       MONTHLY_BDD_CAR_ALLOWANCE,
+       TOTAL_SUPER_BASE_ALLOWANCE_LSL,
+       STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
+       BOARD_ALLOWANCE,
+       BUSINESS_MOTOR_VEHICLE_ALLOWANCE,    
+       HIGHER_DUTIES_ALLOWANCE_,
+       SHIFT_ALLOWANCE_,
+       EMPLOYEE_NAME_CALC_F,
+       MONTHLY_BASE_SALARY,
+       PAYROLL_TAX,
+       BDD_CAR_ALLOWANCE,
+       _fivetran_synced
+from BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2024
+
+--
+union all
+--
+
+select 
+       fiscal_year,
+       MANAGER_POSITION_F,
+       CC_NAME,
+       POSITION_CODE,
+       EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
+       TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
+       TERMINATION_TYPE,
+       SALARY_PLAN_BASE_AMOUNT,
+       SUPER_ON_STI_,
+       SICK_LEAVE_LIABILITY,
+       SALARY_CONTINUANCE,
+       ON_CALL_ALLOWANCE,
+       TOTAL_ALLOWANCES,
+       AL_LIABILITY,
+       TFR_MIDPOINT,
+       WORKER_CODE,
+       MONTHLY_SUPER,
+       LSL_LIABILITY,
+       MONTHLY_BDD_CAR_ALLOWANCE,
+       TOTAL_SUPER_BASE_ALLOWANCE_LSL,
+       STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
+       BOARD_ALLOWANCE,
+       BUSINESS_MOTOR_VEHICLE_ALLOWANCE,    
+       HIGHER_DUTIES_ALLOWANCE_,
+       SHIFT_ALLOWANCE_,
+       EMPLOYEE_NAME_CALC_F,
+       MONTHLY_BASE_SALARY,
+       PAYROLL_TAX,
+       BDD_CAR_ALLOWANCE,
+       _fivetran_synced
+from position_budget_2025_dedup_cte
+
 ;
 
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.WORKER_EXTERNAL_INVOICE_PROGRAMMED(
@@ -15035,210 +15037,7 @@ create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.EMPLOYMENT_TY
         and d.PARAMETER_TYPE = 'NULL_DATE'
 
 ;
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.HEADCOUNT(
-	HEADCOUNT_KEY,
-	WORKER_POSITION_SKEY,
-	WEEK_END_DATE,
-	WEEK_END_DATE_KEY,
-	POSITION_ID,
-	POSITION_SKEY,
-	WORKER_SKEY,
-	WORKER_ID,
-	WORKER_MANAGER_SKEY,
-	WORKER_MANAGER_ID,
-	PAY_RATE_TYPE_KEY,
-	PAY_FREQUENCY_KEY,
-	POSITION_TYPE_NAME,
-	POSITION_TYPE_KEY,
-	LOCATION_SKEY,
-	TEAM_SKEY,
-	COST_CENTRE_SKEY,
-	DEPARTMENT_SKEY,
-	WORKER_SOURCE_KEY,
-	LABOUR_PROVIDER_KEY,
-	VERSION_TIMESTAMP,
-	IS_CURRENT,
-	HEADCOUNT_ACTUAL,
-	HEADCOUNT_ACTUAL_NO_FUTURE,
-	HEADCOUNT_HOURS_ACTUAL,
-	HEADCOUNT_HOURS_ACTUAL_NO_FUTURE,
-	HEADCOUNT_FTE_ACTUAL,
-	HEADCOUNT_FTE_ACTUAL_NO_FUTURE,
-	HEADCOUNT_FTE_BUDGET,
-	HEADCOUNT_FTE_FORECAST,
-	HEADCOUNT_COST_ACTUAL,
-	HEADCOUNT_COST_ACTUAL_NO_FUTURE,
-	HEADCOUNT_COST_BUDGET,
-	HEADCOUNT_COST_FORECAST
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as
 
---
--- Internal
---
-select
-    MD5(CONCAT('I|', we.WORKER_ID, '|', we.POSITION_ID, '|', we.COST_CENTRE_ID, '|', we.WEEK_END_DATE)) as HEADCOUNT_KEY,
-    we.WORKER_POSITION_SKEY,
-    we.WEEK_END_DATE,
-    we.WEEK_END_DATE_KEY,
-    ifnull(we.POSITION_ID, k.PARAMETER_VALUE) as POSITION_ID,
-    ifnull(we.POSITION_SKEY, md5(k.PARAMETER_VALUE)) as POSITION_SKEY,
-    we.WORKER_SKEY,
-    we.WORKER_ID,
-    we.WORKER_MANAGER_SKEY,
-    we.WORKER_MANAGER_ID,
-    ifnull(we.PAY_RATE_TYPE_KEY, md5(k.PARAMETER_VALUE)) as PAY_RATE_TYPE_KEY,
-    we.PAY_FREQUENCY_KEY,
-    'Internal Worker' as POSITION_TYPE_NAME,
-    md5(POSITION_TYPE_NAME) as POSITION_TYPE_KEY,
-    we.LOCATION_SKEY,
-    we.TEAM_SKEY,
-    we.COST_CENTRE_SKEY,
-    we.DEPARTMENT_SKEY,
-
-    we.WORKER_SOURCE_KEY,
-    we.LABOUR_PROVIDER_KEY,
-
-    we.VERSION_TIMESTAMP,
-    we.IS_CURRENT,
-
-    we.HEADCOUNT_ACTUAL,
-    we.HEADCOUNT_ACTUAL_NO_FUTURE,
-
-    we.HEADCOUNT_HOURS_ACTUAL,
-    we.HEADCOUNT_HOURS_ACTUAL_NO_FUTURE,
-    
-    we.HEADCOUNT_FTE_ACTUAL,
-    we.HEADCOUNT_FTE_ACTUAL_NO_FUTURE,
-    we.HEADCOUNT_FTE_BUDGET,
-    we.HEADCOUNT_FTE_FORECAST,
-    
-    null as HEADCOUNT_COST_ACTUAL,              -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_ACTUAL_NO_FUTURE,    -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_BUDGET,              -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_FORECAST             -- TODO-FUTURE: populate
-    
-from
-    BEGA_HR_DATA_{{ env }}.TRANSFORMED.WORKER_POSITION_INTERNAL as we
-    
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
-        k.PARAMETER_TYPE = 'UNLINKED_KEY'
-
---
-union all
---
-
---
--- External
---
-select 
-    MD5(CONCAT('E|', e.WORKER_SKEY, '|0|0|', e.END_OF_WEEK_DATE)) as HEADCOUNT_KEY,
-    e.WORKER_POSITION_SKEY,
-    e.END_OF_WEEK_DATE as WEEK_END_DATE,
-    to_char(e.END_OF_WEEK_DATE, 'YYYYMMDD') as WEEK_END_DATE_KEY,    
-    k.PARAMETER_VALUE as POSITION_ID,
-    md5(k.PARAMETER_VALUE) as POSITION_SKEY,
-    e.WORKER_SKEY,
-    e.WORKER_ID,
-    e.WORKER_MANAGER_SKEY,
-    e.WORKER_MANAGER_ID,
-    ifnull(e.PAY_RATE_TYPE_KEY, md5(k.PARAMETER_VALUE)) as PAY_RATE_TYPE_KEY,
-    md5(k.PARAMETER_VALUE) as PAY_FREQUENCY_KEY,
-    'External Worker' as POSITION_TYPE_NAME,
-    md5(POSITION_TYPE_NAME) as POSITION_TYPE_KEY,
-    e.LOCATION_SKEY,
-    e.TEAM_SKEY,
-    e.COST_CENTRE_SKEY,
-    e.DEPARTMENT_SKEY,
-
-    e.WORKER_SOURCE_KEY,
-    e.LABOUR_PROVIDER_KEY,
-    
-    e.VERSION_TIMESTAMP,
-    e.IS_CURRENT,
-    
-    e.HEADCOUNT_ACTUAL,
-    e.HEADCOUNT_ACTUAL_NO_FUTURE,
-
-    e.HEADCOUNT_HOURS_ACTUAL,
-    e.HEADCOUNT_HOURS_ACTUAL_NO_FUTURE,
-    
-    e.HEADCOUNT_FTE_ACTUAL,
-    e.HEADCOUNT_FTE_ACTUAL_NO_FUTURE,
-    0 as HEADCOUNT_FTE_BUDGET,          -- TODO-FUTURE: there is no Budget for externals: confirm and document
-    0 as HEADCOUNT_FTE_FORECAST,        -- TODO-FUTURE: there is no Forecast for externals: confirm and document
-
-    null as HEADCOUNT_COST_ACTUAL,      -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_ACTUAL_NO_FUTURE,      -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_BUDGET,      -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_FORECAST     -- TODO-FUTURE: populate
-    
-from 
-    BEGA_HR_DATA_{{ env }}.TRANSFORMED.WORKER_POSITION_EXTERNAL as e
-    
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
-        k.PARAMETER_TYPE = 'UNLINKED_KEY'
-where
-    e.WORKER_EXISTS_IN_INTERNAL = false
-
---
-union all
---
-
---
--- Vacant Positions
---
--- RS: 09/08/2024 Deduplication for vacant positions (by adding DISTINCT)
-select distinct 
-    MD5(CONCAT('P|0|', p.POSITION_SKEY, '|0|', p.WEEK_END_DATE)) as HEADCOUNT_KEY,
-    p.WORKER_POSITION_SKEY,
-    p.WEEK_END_DATE,
-    p.WEEK_END_DATE_KEY,
-    ifnull(p.POSITION_ID, k.PARAMETER_VALUE) as POSITION_ID,
-    ifnull(p.POSITION_SKEY, md5(k.PARAMETER_VALUE)) as POSITION_SKEY,
-    p.WORKER_SKEY,
-    p.WORKER_ID,
-    p.WORKER_MANAGER_SKEY,
-    p.WORKER_MANAGER_ID,
-    
-    ifnull(p.PAY_RATE_TYPE_KEY, md5(k.PARAMETER_VALUE)) as PAY_RATE_TYPE_KEY,
-    md5(k.PARAMETER_VALUE) as PAY_FREQUENCY_KEY,
-    'Vacant Position' as POSITION_TYPE_NAME,
-    md5(POSITION_TYPE_NAME) as POSITION_TYPE_KEY,
-    p.LOCATION_SKEY,
-    p.TEAM_SKEY,
-    p.COST_CENTRE_SKEY,
-    p.DEPARTMENT_SKEY,
-
-    p.WORKER_SOURCE_KEY,
-    p.LABOUR_PROVIDER_KEY,
-    
-    p.VERSION_TIMESTAMP,
-    p.IS_CURRENT,
-    
-    p.HEADCOUNT_ACTUAL,
-    p.HEADCOUNT_ACTUAL_NO_FUTURE,
-
-    p.HEADCOUNT_HOURS_ACTUAL,
-    p.HEADCOUNT_HOURS_ACTUAL_NO_FUTURE,
-    
-    p.HEADCOUNT_FTE_ACTUAL,
-    p.HEADCOUNT_FTE_ACTUAL_NO_FUTURE,
-    p.HEADCOUNT_FTE_BUDGET,
-    p.HEADCOUNT_FTE_FORECAST,
-
-    null as HEADCOUNT_COST_ACTUAL,              -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_ACTUAL_NO_FUTURE,    -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_BUDGET,              -- TODO-FUTURE: populate
-    null as HEADCOUNT_COST_FORECAST             -- TODO-FUTURE: populate
-    
-from
-    BEGA_HR_DATA_{{ env }}.TRANSFORMED.POSITION_VACANT as p
-    
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
-        k.PARAMETER_TYPE = 'UNLINKED_KEY'
-        
-;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.LABOUR_PROVIDER(
 	LABOUR_PROVIDER_KEY,
 	LABOUR_PROVIDER_NAME
@@ -15270,233 +15069,7 @@ where
     par_int.PARAMETER_TYPE = 'OPEN_POSITION_WORKER_PROVIDER_SOURCE'
 
 ;
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.LEAVE_BALANCE(
-	LEAVE_BALANCE_KEY,
-	WEEK_END_DATE_KEY,
-	WORKER_POSITION_SKEY,
-	WORKER_SKEY,
-	WORKER_CODE,
-	POSITION_SKEY,
-	LOCATION_SKEY,
-	TEAM_SKEY,
-	COST_CENTRE_SKEY,
-	DEPARTMENT_SKEY,
-	LEAVE_TYPE_ID,
-	LEAVE_TYPE_NAME,
-	PAY_RATE_TYPE_KEY,
-	POSITION_TYPE_KEY,
-	PAY_FREQUENCY_KEY,
-	LEAVE_TYPE_KEY,
-	LEAVE_BALANCE_HOURS,
-	LEAVE_BALANCE_DAYS,
-	LEAVE_BALANCE_WEEKS,
-	LEAVE_BALANCE_WEEKS_THRESHOLD,
-	LEAVE_BALANCE_COST,
-	PARAM_STATUS_LOW_VARIANCE_TO_LAST_REPORT,
-	PARAM_STATUS_HIGH_VARIANCE_TO_LAST_REPORT,
-	VERSION_TIMESTAMP,
-	IS_CURRENT
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as
 
-
-with 
-    -- Weeks where we have history from the Payroll Leave Calculation
-    distinct_weeks_cte as (
-        select distinct
-            min(
-                last_day(
-                    _FIVETRAN_START, 
-                    'week'
-                    )
-                ) as MIN_WEEK_END_DATE
-        from BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_CALCULATION_HISTORY
-        ),
-
-    -- Worker for the weeks where we have history from the Payroll Leave Calculation
-    worker_week_cte as (
-        select 
-            wp.WORKER_CODE,
-            wp.WEEK_END_DATE,
-            MAX_BY(wp.WORKER_SKEY, wp.VERSION_TIMESTAMP)                          as WORKER_SKEY,
-            MAX_BY(wp.WORKER_POSITION_SKEY, wp.VERSION_TIMESTAMP)                 as WORKER_POSITION_SKEY,
-            MAX_BY(wp.POSITION_SKEY, wp.VERSION_TIMESTAMP)                        as POSITION_SKEY,
-            MAX_BY(wp.LOCATION_SKEY, wp.VERSION_TIMESTAMP)                        as LOCATION_SKEY,
-            MAX_BY(wp.TEAM_SKEY, wp.VERSION_TIMESTAMP)                            as TEAM_SKEY,
-            MAX_BY(wp.COST_CENTRE_SKEY, wp.VERSION_TIMESTAMP)                     as COST_CENTRE_SKEY,
-            MAX_BY(wp.DEPARTMENT_SKEY, wp.VERSION_TIMESTAMP)                      as DEPARTMENT_SKEY,
-            MAX_BY(wp.PAY_RATE_TYPE, wp.VERSION_TIMESTAMP)                        as PAY_RATE_TYPE,
-            MAX_BY(wp.PAY_RATE_TYPE_KEY, wp.VERSION_TIMESTAMP)                    as PAY_RATE_TYPE_KEY,
-            MAX_BY(wp.COMPENSATION_TOTAL_BASE_PAY, wp.VERSION_TIMESTAMP)          as COMPENSATION_TOTAL_BASE_PAY,
-            MAX_BY(wp.VERSION_TIMESTAMP, wp.VERSION_TIMESTAMP)                    as VERSION_TIMESTAMP
-     
-        from 
-            BEGA_HR_DATA_{{ env }}.TRANSFORMED.WORKER_POSITION_INTERNAL as wp
-            inner join distinct_weeks_cte as w on
-                wp.WEEK_END_DATE >= w.MIN_WEEK_END_DATE
-        group by all
-        ),
-
-    leave_balance_weekly_latest_cte as (
-        select 
-            ww.WEEK_END_DATE,
-            ww.WORKER_CODE,
-            lc.LEAVE_ID,
-            lc.leave_type_name,
-            max(_FIVETRAN_START)                                                  as VERSION_TIMESTAMP,
-            max_by(PAY_FREQUENCY_KEY, _FIVETRAN_START)                            as PAY_FREQUENCY_KEY,
-            -- max_by(LOCATION_ID, _FIVETRAN_START) as LOCATION_ID,     -- TODO: will be used to get the standard hours per location
-            max_by(LEAVE_TYPE_ID, _FIVETRAN_START)                                as LEAVE_TYPE_ID,
-            max_by(POST_ENTITLEMENT_HOURS, _FIVETRAN_START)                       as POST_ENTITLEMENT_HOURS,
-            max_by(TOTAL_ENTITLEMENT_HOURS, _FIVETRAN_START)                      as TOTAL_ENTITLEMENT_HOURS,
-            max_by(TOTAL_ENTITLEMENT_DAYS, _FIVETRAN_START)                       as TOTAL_ENTITLEMENT_DAYS
-        from
-            worker_week_cte as ww
-            inner join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_CALCULATION_HISTORY as lc on
-                lc.WORKER_CODE = ww.WORKER_CODE
-                and lc._FIVETRAN_START <= ww.WEEK_END_DATE
-                and lc.leave_code <> 'Undefined'
-        group by all
-        )
-        
-     --   SELECT * FROM leave_balance_weekly_latest_cte
-        ,
-
-    leave_balance_weekly_sum_cte as (       -- 21464
-        select 
-            WEEK_END_DATE,
-            WORKER_CODE,
-            LEAVE_TYPE_ID,
-            leave_type_name,
-            max(VERSION_TIMESTAMP) as VERSION_TIMESTAMP,
-            max_by(PAY_FREQUENCY_KEY, VERSION_TIMESTAMP) as PAY_FREQUENCY_KEY,
-            sum(POST_ENTITLEMENT_HOURS) as POST_ENTITLEMENT_HOURS,
-            sum(TOTAL_ENTITLEMENT_HOURS) as TOTAL_ENTITLEMENT_HOURS,
-            sum(TOTAL_ENTITLEMENT_DAYS) as TOTAL_ENTITLEMENT_DAYS
-        from leave_balance_weekly_latest_cte
-        group by all
-        )
-
-SELECT
-    MD5(
-        CONCAT(
-            ww.WEEK_END_DATE,
-            '|',
-            ww.WORKER_CODE,
-            '|',
-            lbw.LEAVE_TYPE_ID
-            )
-        ) as LEAVE_BALANCE_KEY,
-
-    to_char(ww.WEEK_END_DATE, 'YYYYMMDD')                                       as WEEK_END_DATE_KEY,
-    ww.WORKER_POSITION_SKEY,
-    ww.WORKER_SKEY,
-    ww.WORKER_CODE,
-    
-    ww.POSITION_SKEY,
-    ww.LOCATION_SKEY,
-    ww.TEAM_SKEY,
-    ww.COST_CENTRE_SKEY,
-    ww.DEPARTMENT_SKEY,
-    lbw.leave_type_id,
-    lbw.leave_type_name,
-    ifnull(ww.PAY_RATE_TYPE_KEY, md5(par_unlinked.PARAMETER_VALUE))             as PAY_RATE_TYPE_KEY,
-    
-    md5('Internal Worker') as POSITION_TYPE_KEY,
-	lbw.PAY_FREQUENCY_KEY,
-    
-	md5(to_varchar(lbw.LEAVE_TYPE_ID))                                          as LEAVE_TYPE_KEY,
-
-    --Long Service Leave rule: if [Post Entitlement Hours] = 0 then 0 (do not show), otherwise [Total Entitlement Hours]
-    ifnull(case 
-                when lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)                    -- Long Service Leave = 2
-                    and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) = 0.0
-                        then 0.0
-            else ifnull(lbw.TOTAL_ENTITLEMENT_HOURS, 0.0)
-                end 
-            ,0.0)                                                               as LEAVE_BALANCE_HOURS,
-
-    ifnull(case 
-                when lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)                    -- Long Service Leave = 2
-                    and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) = 0.0
-                        then 0.0
-            else ifnull(lbw.TOTAL_ENTITLEMENT_DAYS, 0.0)
-                end 
-            ,0.0)                                                               as LEAVE_BALANCE_DAYS,
-    
-    ifnull(case 
-                when lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)                    -- Long Service Leave = 2
-                    and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) = 0.0
-                        then 0.0
-            else ifnull(lbw.TOTAL_ENTITLEMENT_HOURS, 0.0) / 38.0
-                end 
-            ,0.0)                                                               as LEAVE_BALANCE_WEEKS,
-     
-     cast(par_threshold.PARAMETER_VALUE as integer)                             as LEAVE_BALANCE_WEEKS_THRESHOLD,
-
-        -- ww.COMPENSATION_TOTAL_BASE_PAY,
-        -- ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) as POST_ENTITLEMENT_HOURS,
-        -- lbw.LEAVE_TYPE_ID,
-
-
-    --------------------
-    -- COST CALCULATIONS
-    --------------------
-
-    -- Calculate Salaried Long Service Leave
-     case    
-        when ww.PAY_RATE_TYPE_KEY = MD5(par_salaried.parameter_value)                       -- PAY_RATE_TYPE_KEY = 'Salaried' 
-             and lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)       -- Long Service Leave = 2
-                and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) = 0.0                           -- Post Entitlement = zero (do not show)
-            then 0.0                                                                        -- Set to zero long service leave cost
-
-        when ww.PAY_RATE_TYPE_KEY = MD5(par_salaried.parameter_value)                       -- PAY_RATE_TYPE_KEY = 'Salaried' 
-            and lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)        -- Long Service Leave = 2
-                and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) <> 0.0                          -- Post Entitlement <> zero (show)
-            then ifnull((ww.COMPENSATION_TOTAL_BASE_PAY / 52.0 / 38.0), 0.0)                -- TODO: replace by the parameter table by location
-                * 
-                TOTAL_ENTITLEMENT_HOURS
-              
-    -- Calculate Salaried Non Long Service Leave Types
-        when ww.PAY_RATE_TYPE_KEY = MD5(par_salaried.parameter_value)                       -- PAY_RATE_TYPE_KEY = 'Salaried' 
-            then ifnull((ww.COMPENSATION_TOTAL_BASE_PAY / 52.0 / 38.0), 0.0)                -- TODO: replace by the parameter table by location
-                * 
-                LEAVE_BALANCE_HOURS
-
-    -- Calculate non salaried workers
-        else                                                                                -- Non Salaried workers do not need a weekly conversion
-           ifnull(ww.COMPENSATION_TOTAL_BASE_PAY, 0.0) 
-                * 
-                LEAVE_BALANCE_HOURS
-
-        end                                                                     as LEAVE_BALANCE_COST,  -- Indicative Cost only
-
-    cast(par_low.PARAMETER_VALUE as float)                                      as PARAM_STATUS_LOW_VARIANCE_TO_LAST_REPORT,
-    cast(par_high.PARAMETER_VALUE as float)                                     as PARAM_STATUS_HIGH_VARIANCE_TO_LAST_REPORT,
-
-    ifnull(lbw.VERSION_TIMESTAMP, ww.VERSION_TIMESTAMP)                         as VERSION_TIMESTAMP,
-    true as IS_CURRENT
-
-from 
-    worker_week_cte as ww
-    inner join leave_balance_weekly_sum_cte as lbw on
-        ww.WORKER_CODE = lbw.WORKER_CODE
-        and ww.WEEK_END_DATE = lbw.WEEK_END_DATE
-        
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_unlinked on
-        par_unlinked.PARAMETER_TYPE = 'UNLINKED_KEY'
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_salaried on
-        par_salaried.PARAMETER_TYPE = 'WORKER_PAY_RATE_TYPE_SALARIED'
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_low on
-        par_low.PARAMETER_TYPE = 'LEAVE_BALANCE_STATUS_LOW_VARIANCE_TO_LAST_REPORT'
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_high on
-        par_high.PARAMETER_TYPE = 'LEAVE_BALANCE_STATUS_HIGH_VARIANCE_TO_LAST_REPORT'
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_threshold on
-        par_threshold.PARAMETER_TYPE = 'LEAVE_BALANCE_WEEKS_THRESHOLD'
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_longservice on
-        par_longservice.PARAMETER_TYPE = 'LONG_SERVICE_LEAVE'
-
-;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.LEAVE_TYPE(
 	LEAVE_TYPE_KEY,
 	LEAVE_TYPE_ID,
@@ -15536,6 +15109,7 @@ from
 group by all
     
 ;
+
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.LOCATION(
 	LOCATION_SKEY,
 	LOCATION_ID,
@@ -17086,6 +16660,440 @@ from
     inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
         k.PARAMETER_TYPE = 'UNLINKED_KEY' 
 ;
+
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.HEADCOUNT(
+	HEADCOUNT_KEY,
+	WORKER_POSITION_SKEY,
+	WEEK_END_DATE,
+	WEEK_END_DATE_KEY,
+	POSITION_ID,
+	POSITION_SKEY,
+	WORKER_SKEY,
+	WORKER_ID,
+	WORKER_MANAGER_SKEY,
+	WORKER_MANAGER_ID,
+	PAY_RATE_TYPE_KEY,
+	PAY_FREQUENCY_KEY,
+	POSITION_TYPE_NAME,
+	POSITION_TYPE_KEY,
+	LOCATION_SKEY,
+	TEAM_SKEY,
+	COST_CENTRE_SKEY,
+	DEPARTMENT_SKEY,
+	WORKER_SOURCE_KEY,
+	LABOUR_PROVIDER_KEY,
+	VERSION_TIMESTAMP,
+	IS_CURRENT,
+	HEADCOUNT_ACTUAL,
+	HEADCOUNT_ACTUAL_NO_FUTURE,
+	HEADCOUNT_HOURS_ACTUAL,
+	HEADCOUNT_HOURS_ACTUAL_NO_FUTURE,
+	HEADCOUNT_FTE_ACTUAL,
+	HEADCOUNT_FTE_ACTUAL_NO_FUTURE,
+	HEADCOUNT_FTE_BUDGET,
+	HEADCOUNT_FTE_FORECAST,
+	HEADCOUNT_COST_ACTUAL,
+	HEADCOUNT_COST_ACTUAL_NO_FUTURE,
+	HEADCOUNT_COST_BUDGET,
+	HEADCOUNT_COST_FORECAST
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as
+
+--
+-- Internal
+--
+select
+    MD5(CONCAT('I|', we.WORKER_ID, '|', we.POSITION_ID, '|', we.COST_CENTRE_ID, '|', we.WEEK_END_DATE)) as HEADCOUNT_KEY,
+    we.WORKER_POSITION_SKEY,
+    we.WEEK_END_DATE,
+    we.WEEK_END_DATE_KEY,
+    ifnull(we.POSITION_ID, k.PARAMETER_VALUE) as POSITION_ID,
+    ifnull(we.POSITION_SKEY, md5(k.PARAMETER_VALUE)) as POSITION_SKEY,
+    we.WORKER_SKEY,
+    we.WORKER_ID,
+    we.WORKER_MANAGER_SKEY,
+    we.WORKER_MANAGER_ID,
+    ifnull(we.PAY_RATE_TYPE_KEY, md5(k.PARAMETER_VALUE)) as PAY_RATE_TYPE_KEY,
+    we.PAY_FREQUENCY_KEY,
+    'Internal Worker' as POSITION_TYPE_NAME,
+    md5(POSITION_TYPE_NAME) as POSITION_TYPE_KEY,
+    we.LOCATION_SKEY,
+    we.TEAM_SKEY,
+    we.COST_CENTRE_SKEY,
+    we.DEPARTMENT_SKEY,
+
+    we.WORKER_SOURCE_KEY,
+    we.LABOUR_PROVIDER_KEY,
+
+    we.VERSION_TIMESTAMP,
+    we.IS_CURRENT,
+
+    we.HEADCOUNT_ACTUAL,
+    we.HEADCOUNT_ACTUAL_NO_FUTURE,
+
+    we.HEADCOUNT_HOURS_ACTUAL,
+    we.HEADCOUNT_HOURS_ACTUAL_NO_FUTURE,
+    
+    we.HEADCOUNT_FTE_ACTUAL,
+    we.HEADCOUNT_FTE_ACTUAL_NO_FUTURE,
+    we.HEADCOUNT_FTE_BUDGET,
+    we.HEADCOUNT_FTE_FORECAST,
+    
+    null as HEADCOUNT_COST_ACTUAL,              -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_ACTUAL_NO_FUTURE,    -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_BUDGET,              -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_FORECAST             -- TODO-FUTURE: populate
+    
+from
+    BEGA_HR_DATA_{{ env }}.TRANSFORMED.WORKER_POSITION_INTERNAL as we
+    
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
+        k.PARAMETER_TYPE = 'UNLINKED_KEY'
+
+--
+union all
+--
+
+--
+-- External
+--
+select 
+    MD5(CONCAT('E|', e.WORKER_SKEY, '|0|0|', e.END_OF_WEEK_DATE)) as HEADCOUNT_KEY,
+    e.WORKER_POSITION_SKEY,
+    e.END_OF_WEEK_DATE as WEEK_END_DATE,
+    to_char(e.END_OF_WEEK_DATE, 'YYYYMMDD') as WEEK_END_DATE_KEY,    
+    k.PARAMETER_VALUE as POSITION_ID,
+    md5(k.PARAMETER_VALUE) as POSITION_SKEY,
+    e.WORKER_SKEY,
+    e.WORKER_ID,
+    e.WORKER_MANAGER_SKEY,
+    e.WORKER_MANAGER_ID,
+    ifnull(e.PAY_RATE_TYPE_KEY, md5(k.PARAMETER_VALUE)) as PAY_RATE_TYPE_KEY,
+    md5(k.PARAMETER_VALUE) as PAY_FREQUENCY_KEY,
+    'External Worker' as POSITION_TYPE_NAME,
+    md5(POSITION_TYPE_NAME) as POSITION_TYPE_KEY,
+    e.LOCATION_SKEY,
+    e.TEAM_SKEY,
+    e.COST_CENTRE_SKEY,
+    e.DEPARTMENT_SKEY,
+
+    e.WORKER_SOURCE_KEY,
+    e.LABOUR_PROVIDER_KEY,
+    
+    e.VERSION_TIMESTAMP,
+    e.IS_CURRENT,
+    
+    e.HEADCOUNT_ACTUAL,
+    e.HEADCOUNT_ACTUAL_NO_FUTURE,
+
+    e.HEADCOUNT_HOURS_ACTUAL,
+    e.HEADCOUNT_HOURS_ACTUAL_NO_FUTURE,
+    
+    e.HEADCOUNT_FTE_ACTUAL,
+    e.HEADCOUNT_FTE_ACTUAL_NO_FUTURE,
+    0 as HEADCOUNT_FTE_BUDGET,          -- TODO-FUTURE: there is no Budget for externals: confirm and document
+    0 as HEADCOUNT_FTE_FORECAST,        -- TODO-FUTURE: there is no Forecast for externals: confirm and document
+
+    null as HEADCOUNT_COST_ACTUAL,      -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_ACTUAL_NO_FUTURE,      -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_BUDGET,      -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_FORECAST     -- TODO-FUTURE: populate
+    
+from 
+    BEGA_HR_DATA_{{ env }}.TRANSFORMED.WORKER_POSITION_EXTERNAL as e
+    
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
+        k.PARAMETER_TYPE = 'UNLINKED_KEY'
+where
+    e.WORKER_EXISTS_IN_INTERNAL = false
+
+--
+union all
+--
+
+--
+-- Vacant Positions
+--
+-- RS: 09/08/2024 Deduplication for vacant positions (by adding DISTINCT)
+select distinct 
+    MD5(CONCAT('P|0|', p.POSITION_SKEY, '|0|', p.WEEK_END_DATE)) as HEADCOUNT_KEY,
+    p.WORKER_POSITION_SKEY,
+    p.WEEK_END_DATE,
+    p.WEEK_END_DATE_KEY,
+    ifnull(p.POSITION_ID, k.PARAMETER_VALUE) as POSITION_ID,
+    ifnull(p.POSITION_SKEY, md5(k.PARAMETER_VALUE)) as POSITION_SKEY,
+    p.WORKER_SKEY,
+    p.WORKER_ID,
+    p.WORKER_MANAGER_SKEY,
+    p.WORKER_MANAGER_ID,
+    
+    ifnull(p.PAY_RATE_TYPE_KEY, md5(k.PARAMETER_VALUE)) as PAY_RATE_TYPE_KEY,
+    md5(k.PARAMETER_VALUE) as PAY_FREQUENCY_KEY,
+    'Vacant Position' as POSITION_TYPE_NAME,
+    md5(POSITION_TYPE_NAME) as POSITION_TYPE_KEY,
+    p.LOCATION_SKEY,
+    p.TEAM_SKEY,
+    p.COST_CENTRE_SKEY,
+    p.DEPARTMENT_SKEY,
+
+    p.WORKER_SOURCE_KEY,
+    p.LABOUR_PROVIDER_KEY,
+    
+    p.VERSION_TIMESTAMP,
+    p.IS_CURRENT,
+    
+    p.HEADCOUNT_ACTUAL,
+    p.HEADCOUNT_ACTUAL_NO_FUTURE,
+
+    p.HEADCOUNT_HOURS_ACTUAL,
+    p.HEADCOUNT_HOURS_ACTUAL_NO_FUTURE,
+    
+    p.HEADCOUNT_FTE_ACTUAL,
+    p.HEADCOUNT_FTE_ACTUAL_NO_FUTURE,
+    p.HEADCOUNT_FTE_BUDGET,
+    p.HEADCOUNT_FTE_FORECAST,
+
+    null as HEADCOUNT_COST_ACTUAL,              -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_ACTUAL_NO_FUTURE,    -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_BUDGET,              -- TODO-FUTURE: populate
+    null as HEADCOUNT_COST_FORECAST             -- TODO-FUTURE: populate
+    
+from
+    BEGA_HR_DATA_{{ env }}.TRANSFORMED.POSITION_VACANT as p
+    
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
+        k.PARAMETER_TYPE = 'UNLINKED_KEY'
+        
+;
+
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.LEAVE_BALANCE(
+	LEAVE_BALANCE_KEY,
+	WEEK_END_DATE_KEY,
+	WORKER_POSITION_SKEY,
+	WORKER_SKEY,
+	WORKER_CODE,
+	POSITION_SKEY,
+	LOCATION_SKEY,
+	TEAM_SKEY,
+	COST_CENTRE_SKEY,
+	DEPARTMENT_SKEY,
+	LEAVE_TYPE_ID,
+	LEAVE_TYPE_NAME,
+	PAY_RATE_TYPE_KEY,
+	POSITION_TYPE_KEY,
+	PAY_FREQUENCY_KEY,
+	LEAVE_TYPE_KEY,
+	LEAVE_BALANCE_HOURS,
+	LEAVE_BALANCE_DAYS,
+	LEAVE_BALANCE_WEEKS,
+	LEAVE_BALANCE_WEEKS_THRESHOLD,
+	LEAVE_BALANCE_COST,
+	PARAM_STATUS_LOW_VARIANCE_TO_LAST_REPORT,
+	PARAM_STATUS_HIGH_VARIANCE_TO_LAST_REPORT,
+	VERSION_TIMESTAMP,
+	IS_CURRENT
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as
+
+
+with 
+    -- Weeks where we have history from the Payroll Leave Calculation
+    distinct_weeks_cte as (
+        select distinct
+            min(
+                last_day(
+                    _FIVETRAN_START, 
+                    'week'
+                    )
+                ) as MIN_WEEK_END_DATE
+        from BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_CALCULATION_HISTORY
+        ),
+
+    -- Worker for the weeks where we have history from the Payroll Leave Calculation
+    worker_week_cte as (
+        select 
+            wp.WORKER_CODE,
+            wp.WEEK_END_DATE,
+            MAX_BY(wp.WORKER_SKEY, wp.VERSION_TIMESTAMP)                          as WORKER_SKEY,
+            MAX_BY(wp.WORKER_POSITION_SKEY, wp.VERSION_TIMESTAMP)                 as WORKER_POSITION_SKEY,
+            MAX_BY(wp.POSITION_SKEY, wp.VERSION_TIMESTAMP)                        as POSITION_SKEY,
+            MAX_BY(wp.LOCATION_SKEY, wp.VERSION_TIMESTAMP)                        as LOCATION_SKEY,
+            MAX_BY(wp.TEAM_SKEY, wp.VERSION_TIMESTAMP)                            as TEAM_SKEY,
+            MAX_BY(wp.COST_CENTRE_SKEY, wp.VERSION_TIMESTAMP)                     as COST_CENTRE_SKEY,
+            MAX_BY(wp.DEPARTMENT_SKEY, wp.VERSION_TIMESTAMP)                      as DEPARTMENT_SKEY,
+            MAX_BY(wp.PAY_RATE_TYPE, wp.VERSION_TIMESTAMP)                        as PAY_RATE_TYPE,
+            MAX_BY(wp.PAY_RATE_TYPE_KEY, wp.VERSION_TIMESTAMP)                    as PAY_RATE_TYPE_KEY,
+            MAX_BY(wp.COMPENSATION_TOTAL_BASE_PAY, wp.VERSION_TIMESTAMP)          as COMPENSATION_TOTAL_BASE_PAY,
+            MAX_BY(wp.VERSION_TIMESTAMP, wp.VERSION_TIMESTAMP)                    as VERSION_TIMESTAMP
+     
+        from 
+            BEGA_HR_DATA_{{ env }}.TRANSFORMED.WORKER_POSITION_INTERNAL as wp
+            inner join distinct_weeks_cte as w on
+                wp.WEEK_END_DATE >= w.MIN_WEEK_END_DATE
+        group by all
+        ),
+
+    leave_balance_weekly_latest_cte as (
+        select 
+            ww.WEEK_END_DATE,
+            ww.WORKER_CODE,
+            lc.LEAVE_ID,
+            lc.leave_type_name,
+            max(_FIVETRAN_START)                                                  as VERSION_TIMESTAMP,
+            max_by(PAY_FREQUENCY_KEY, _FIVETRAN_START)                            as PAY_FREQUENCY_KEY,
+            -- max_by(LOCATION_ID, _FIVETRAN_START) as LOCATION_ID,     -- TODO: will be used to get the standard hours per location
+            max_by(LEAVE_TYPE_ID, _FIVETRAN_START)                                as LEAVE_TYPE_ID,
+            max_by(POST_ENTITLEMENT_HOURS, _FIVETRAN_START)                       as POST_ENTITLEMENT_HOURS,
+            max_by(TOTAL_ENTITLEMENT_HOURS, _FIVETRAN_START)                      as TOTAL_ENTITLEMENT_HOURS,
+            max_by(TOTAL_ENTITLEMENT_DAYS, _FIVETRAN_START)                       as TOTAL_ENTITLEMENT_DAYS
+        from
+            worker_week_cte as ww
+            inner join BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_CALCULATION_HISTORY as lc on
+                lc.WORKER_CODE = ww.WORKER_CODE
+                and lc._FIVETRAN_START <= ww.WEEK_END_DATE
+                and lc.leave_code <> 'Undefined'
+        group by all
+        )
+        
+     --   SELECT * FROM leave_balance_weekly_latest_cte
+        ,
+
+    leave_balance_weekly_sum_cte as (       -- 21464
+        select 
+            WEEK_END_DATE,
+            WORKER_CODE,
+            LEAVE_TYPE_ID,
+            leave_type_name,
+            max(VERSION_TIMESTAMP) as VERSION_TIMESTAMP,
+            max_by(PAY_FREQUENCY_KEY, VERSION_TIMESTAMP) as PAY_FREQUENCY_KEY,
+            sum(POST_ENTITLEMENT_HOURS) as POST_ENTITLEMENT_HOURS,
+            sum(TOTAL_ENTITLEMENT_HOURS) as TOTAL_ENTITLEMENT_HOURS,
+            sum(TOTAL_ENTITLEMENT_DAYS) as TOTAL_ENTITLEMENT_DAYS
+        from leave_balance_weekly_latest_cte
+        group by all
+        )
+
+SELECT
+    MD5(
+        CONCAT(
+            ww.WEEK_END_DATE,
+            '|',
+            ww.WORKER_CODE,
+            '|',
+            lbw.LEAVE_TYPE_ID
+            )
+        ) as LEAVE_BALANCE_KEY,
+
+    to_char(ww.WEEK_END_DATE, 'YYYYMMDD')                                       as WEEK_END_DATE_KEY,
+    ww.WORKER_POSITION_SKEY,
+    ww.WORKER_SKEY,
+    ww.WORKER_CODE,
+    
+    ww.POSITION_SKEY,
+    ww.LOCATION_SKEY,
+    ww.TEAM_SKEY,
+    ww.COST_CENTRE_SKEY,
+    ww.DEPARTMENT_SKEY,
+    lbw.leave_type_id,
+    lbw.leave_type_name,
+    ifnull(ww.PAY_RATE_TYPE_KEY, md5(par_unlinked.PARAMETER_VALUE))             as PAY_RATE_TYPE_KEY,
+    
+    md5('Internal Worker') as POSITION_TYPE_KEY,
+	lbw.PAY_FREQUENCY_KEY,
+    
+	md5(to_varchar(lbw.LEAVE_TYPE_ID))                                          as LEAVE_TYPE_KEY,
+
+    --Long Service Leave rule: if [Post Entitlement Hours] = 0 then 0 (do not show), otherwise [Total Entitlement Hours]
+    ifnull(case 
+                when lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)                    -- Long Service Leave = 2
+                    and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) = 0.0
+                        then 0.0
+            else ifnull(lbw.TOTAL_ENTITLEMENT_HOURS, 0.0)
+                end 
+            ,0.0)                                                               as LEAVE_BALANCE_HOURS,
+
+    ifnull(case 
+                when lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)                    -- Long Service Leave = 2
+                    and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) = 0.0
+                        then 0.0
+            else ifnull(lbw.TOTAL_ENTITLEMENT_DAYS, 0.0)
+                end 
+            ,0.0)                                                               as LEAVE_BALANCE_DAYS,
+    
+    ifnull(case 
+                when lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)                    -- Long Service Leave = 2
+                    and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) = 0.0
+                        then 0.0
+            else ifnull(lbw.TOTAL_ENTITLEMENT_HOURS, 0.0) / 38.0
+                end 
+            ,0.0)                                                               as LEAVE_BALANCE_WEEKS,
+     
+     cast(par_threshold.PARAMETER_VALUE as integer)                             as LEAVE_BALANCE_WEEKS_THRESHOLD,
+
+        -- ww.COMPENSATION_TOTAL_BASE_PAY,
+        -- ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) as POST_ENTITLEMENT_HOURS,
+        -- lbw.LEAVE_TYPE_ID,
+
+
+    --------------------
+    -- COST CALCULATIONS
+    --------------------
+
+    -- Calculate Salaried Long Service Leave
+     case    
+        when ww.PAY_RATE_TYPE_KEY = MD5(par_salaried.parameter_value)                       -- PAY_RATE_TYPE_KEY = 'Salaried' 
+             and lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)       -- Long Service Leave = 2
+                and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) = 0.0                           -- Post Entitlement = zero (do not show)
+            then 0.0                                                                        -- Set to zero long service leave cost
+
+        when ww.PAY_RATE_TYPE_KEY = MD5(par_salaried.parameter_value)                       -- PAY_RATE_TYPE_KEY = 'Salaried' 
+            and lbw.LEAVE_TYPE_ID = cast(par_longservice.parameter_value as integer)        -- Long Service Leave = 2
+                and ifnull(lbw.POST_ENTITLEMENT_HOURS, 0.0) <> 0.0                          -- Post Entitlement <> zero (show)
+            then ifnull((ww.COMPENSATION_TOTAL_BASE_PAY / 52.0 / 38.0), 0.0)                -- TODO: replace by the parameter table by location
+                * 
+                TOTAL_ENTITLEMENT_HOURS
+              
+    -- Calculate Salaried Non Long Service Leave Types
+        when ww.PAY_RATE_TYPE_KEY = MD5(par_salaried.parameter_value)                       -- PAY_RATE_TYPE_KEY = 'Salaried' 
+            then ifnull((ww.COMPENSATION_TOTAL_BASE_PAY / 52.0 / 38.0), 0.0)                -- TODO: replace by the parameter table by location
+                * 
+                LEAVE_BALANCE_HOURS
+
+    -- Calculate non salaried workers
+        else                                                                                -- Non Salaried workers do not need a weekly conversion
+           ifnull(ww.COMPENSATION_TOTAL_BASE_PAY, 0.0) 
+                * 
+                LEAVE_BALANCE_HOURS
+
+        end                                                                     as LEAVE_BALANCE_COST,  -- Indicative Cost only
+
+    cast(par_low.PARAMETER_VALUE as float)                                      as PARAM_STATUS_LOW_VARIANCE_TO_LAST_REPORT,
+    cast(par_high.PARAMETER_VALUE as float)                                     as PARAM_STATUS_HIGH_VARIANCE_TO_LAST_REPORT,
+
+    ifnull(lbw.VERSION_TIMESTAMP, ww.VERSION_TIMESTAMP)                         as VERSION_TIMESTAMP,
+    true as IS_CURRENT
+
+from 
+    worker_week_cte as ww
+    inner join leave_balance_weekly_sum_cte as lbw on
+        ww.WORKER_CODE = lbw.WORKER_CODE
+        and ww.WEEK_END_DATE = lbw.WEEK_END_DATE
+        
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_unlinked on
+        par_unlinked.PARAMETER_TYPE = 'UNLINKED_KEY'
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_salaried on
+        par_salaried.PARAMETER_TYPE = 'WORKER_PAY_RATE_TYPE_SALARIED'
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_low on
+        par_low.PARAMETER_TYPE = 'LEAVE_BALANCE_STATUS_LOW_VARIANCE_TO_LAST_REPORT'
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_high on
+        par_high.PARAMETER_TYPE = 'LEAVE_BALANCE_STATUS_HIGH_VARIANCE_TO_LAST_REPORT'
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_threshold on
+        par_threshold.PARAMETER_TYPE = 'LEAVE_BALANCE_WEEKS_THRESHOLD'
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_longservice on
+        par_longservice.PARAMETER_TYPE = 'LONG_SERVICE_LEAVE'
+
+;
+
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.WORKER_SOURCE(
 	WORKER_SOURCE_KEY,
 	WORKER_SOURCE_NAME
@@ -17127,6 +17135,8 @@ where
     par_int.PARAMETER_TYPE = 'OPEN_POSITION_WORKER_PROVIDER_SOURCE'
 
 ;
+
+create or replace schema BEGA_HR_DATA_{{ env }}.REPORTING;
 
 create or replace view BEGA_HR_DATA_{{ env }}.REPORTING.DIM_COST_CENTRE(
 	COST_CENTRE_SKEY,
@@ -17213,26 +17223,7 @@ select
 from
     BEGA_HR_DATA_{{ env }}.TRANSFORMED.LABOUR_PROVIDER as a
 ;
-create or replace view BEGA_HR_DATA_{{ env }}.REPORTING.DIM_LEAVE_TYPE(
-	LEAVE_TYPE_KEY,
-	LEAVE_TYPE_ID,
-	LEAVE_TYPE_NAME,
-	DISPLAY_ORDER,
-	VERSION_TIMESTAMP,
-	IS_CURRENT_SKEY
-) as
 
-select
-    LEAVE_TYPE_KEY,
-    LEAVE_TYPE_ID,
-    LEAVE_TYPE_NAME,
-    DISPLAY_ORDER,
-    VERSION_TIMESTAMP,
-    IS_CURRENT_SKEY
-from
-    BEGA_HR_DATA_{{ env }}.TRANSFORMED.LEAVE_TYPE
-    
-;
 create or replace view BEGA_HR_DATA_{{ env }}.REPORTING.DIM_LOCATION(
 	LOCATION_SKEY,
 	LOCATION_ID,

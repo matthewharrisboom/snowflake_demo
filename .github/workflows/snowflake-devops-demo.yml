@@ -13,20 +13,8 @@ on:
           - dev
           - uat
           - prod
-          - bega
 
 jobs:
-  # deploy-dev:
-  #   uses: ./.github/workflows/deploy-snowflake.yml
-  #   with:
-  #     my_env: dev 
-  #   secrets: inherit
-  # deploy-prod:
-  #   needs: deploy-dev
-  #   uses: ./.github/workflows/deploy-snowflake.yml
-  #   with:
-  #     my_env: prod 
-  #   secrets: inherit
   deploy-bega:
     uses: ./.github/workflows/deploy-snowflake.yml
     with:

@@ -15337,19 +15337,7 @@ where
 
 
 ;
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.POSITION_TYPE(
-	POSITION_TYPE_KEY,
-	POSITION_TYPE_NAME
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as
 
-select distinct
-    POSITION_TYPE_KEY,
-    POSITION_TYPE_NAME
-from
-    BEGA_HR_DATA_{{ env }}.TRANSFORMED.HEADCOUNT
-
-;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.POSITION_VACANT(
 	HEADCOUNT_SKEY,
 	WORKER_POSITION_SKEY,
@@ -16864,6 +16852,20 @@ from
     inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
         k.PARAMETER_TYPE = 'UNLINKED_KEY'
         
+;
+
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.POSITION_TYPE(
+	POSITION_TYPE_KEY,
+	POSITION_TYPE_NAME
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as
+
+select distinct
+    POSITION_TYPE_KEY,
+    POSITION_TYPE_NAME
+from
+    BEGA_HR_DATA_{{ env }}.TRANSFORMED.HEADCOUNT
+
 ;
 
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.LEAVE_BALANCE(

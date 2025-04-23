@@ -6657,6 +6657,69 @@ select
 from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_MONTHLY_LEAVE_ANNUAL_HISTORY
 
 ;
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_HISTORY(
+	PAY_FREQUENCY_KEY,
+	IDEMPLOYEELEAVE,
+	FPOSTPROHOURS,
+	BNONENTMET,
+	ICOSTACCOUNTID,
+	COST_ACCOUNT_FIVETRAN_SYNCED,
+	FCURRENTACCRUALHOURS,
+	DSUSPENDFROM,
+	DCURRENTACCRUALDATE,
+	DTAKENDATE,
+	FTAKENHOURS,
+	DPOSTENTDATE,
+	IEMPLOYEEID,
+	EMPLOYEE_FIVETRAN_SYNCED,
+	BFIRSTENTPERIOD,
+	FYEARTODATELOADING,
+	FLEAVESHIFTS,
+	FPREENTHOURS,
+	ILEAVELOADINGCLASSID,
+	LEAVE_LOADING_FIVETRAN_SYNCED,
+	ICHANGEAGENTID,
+	ILEAVETYPE,
+	FPOSTENTHOURS,
+	DPOSTPRODATE,
+	DSUSPENDTO,
+	BSUSPENDENT,
+	FPRE78ENTHOURS,
+	BGRANT,
+	ILEAVECLASSID,
+	SICK_LEAVE_FIVETRAN_SYNCED,
+	ANNUAL_LEAVE_FIVETRAN_SYNCED,
+	LONG_SERVICE_LEAVE_FIVETRAN_SYNCED,
+	USER_DEFINED_LEAVE_FIVETRAN_SYNCED,
+	INONENTMONTHS,
+	_FIVETRAN_DELETED,
+	_FIVETRAN_SYNCED,
+	_FIVETRAN_START,
+	_FIVETRAN_END
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as 
+
+
+select
+    md5('Weekly') as PAY_FREQUENCY_KEY,
+    *
+from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_WEEKLY_LEAVE_HISTORY
+--
+union
+--
+select
+    md5('Fortnightly') as PAY_FREQUENCY_KEY,
+    *
+from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_FORTNIGHTLY_LEAVE_HISTORY
+--
+union
+--
+select
+    md5('Monthly') as PAY_FREQUENCY_KEY,
+    *
+from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_MONTHLY_LEAVE_HISTORY
+
+;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_CALCULATION_HISTORY(
 	PAY_FREQUENCY_KEY,
 	WORKER_ID,
@@ -6935,69 +6998,6 @@ from
         and el.iLeaveType = 6
      left join BEGA_HR_DATA_{{ env }}.control.user_defined_leave_type as lt
          on udl.ccode = lt.leave_reason_code
-;
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_HISTORY(
-	PAY_FREQUENCY_KEY,
-	IDEMPLOYEELEAVE,
-	FPOSTPROHOURS,
-	BNONENTMET,
-	ICOSTACCOUNTID,
-	COST_ACCOUNT_FIVETRAN_SYNCED,
-	FCURRENTACCRUALHOURS,
-	DSUSPENDFROM,
-	DCURRENTACCRUALDATE,
-	DTAKENDATE,
-	FTAKENHOURS,
-	DPOSTENTDATE,
-	IEMPLOYEEID,
-	EMPLOYEE_FIVETRAN_SYNCED,
-	BFIRSTENTPERIOD,
-	FYEARTODATELOADING,
-	FLEAVESHIFTS,
-	FPREENTHOURS,
-	ILEAVELOADINGCLASSID,
-	LEAVE_LOADING_FIVETRAN_SYNCED,
-	ICHANGEAGENTID,
-	ILEAVETYPE,
-	FPOSTENTHOURS,
-	DPOSTPRODATE,
-	DSUSPENDTO,
-	BSUSPENDENT,
-	FPRE78ENTHOURS,
-	BGRANT,
-	ILEAVECLASSID,
-	SICK_LEAVE_FIVETRAN_SYNCED,
-	ANNUAL_LEAVE_FIVETRAN_SYNCED,
-	LONG_SERVICE_LEAVE_FIVETRAN_SYNCED,
-	USER_DEFINED_LEAVE_FIVETRAN_SYNCED,
-	INONENTMONTHS,
-	_FIVETRAN_DELETED,
-	_FIVETRAN_SYNCED,
-	_FIVETRAN_START,
-	_FIVETRAN_END
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as 
-
-
-select
-    md5('Weekly') as PAY_FREQUENCY_KEY,
-    *
-from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_WEEKLY_LEAVE_HISTORY
---
-union
---
-select
-    md5('Fortnightly') as PAY_FREQUENCY_KEY,
-    *
-from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_FORTNIGHTLY_LEAVE_HISTORY
---
-union
---
-select
-    md5('Monthly') as PAY_FREQUENCY_KEY,
-    *
-from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_MONTHLY_LEAVE_HISTORY
-
 ;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_LEAVE_LOADING_HISTORY(
 	PAY_FREQUENCY_KEY,
@@ -11342,217 +11342,7 @@ group by
     all
 ;
 
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_ACTUALS(
-	PAYROLL_TYPE,
-	PAY_FREQUENCY_KEY,
-	WORKER_CODE,
-	POSITION_CODE,
-	POSITION_ID,
-	POSITION_SKEY,
-	WORKER_POSITION_SKEY,
-	WORKER_SKEY,
-	WORKER_ID,
-	LOCATION_ID,
-	LOCATION_SKEY,
-	TEAM_ID,
-	TEAM_SKEY,
-	DEPARTMENT_SKEY,
-	DEPARTMENT_ID,
-	COST_CENTRE_SKEY,
-	COST_CENTRE_ID,
-	PAY_RATE_TYPE,
-	PAY_RATE_TYPE_KEY,
-	WORKER_POSITION_END,
-	END_OF_WEEK_DATE,
-	WEEK_END_DATE_KEY,
-	SALARY_ACTUALS,
-	ALLOWANCE_ACTUALS,
-	ON_COSTS_ACTUALS,
-	NORMAL_HOURS_ACTUALS,
-	OVERTIME_HOURS_ACTUALS,
-	OVERTIME_COSTS_ACTUALS,
-	PAYROLL_TAX_ACTUALS,
-	PAYROLL_TAX_PERCENT,
-	ON_COSTS_AL_ACTUALS,
-	ON_COSTS_LSL_ACTUALS,
-	ON_COSTS_SUPER_ACTUALS
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as
 
-with employee_trans as (
-    select
-        *
-    from
-        BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_TRANSACTION_WEEKLY
-    UNION ALL
-    select
-        *
-    from
-        BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_TRANSACTION_FORTNIGHTLY
-    UNION ALL
-    select
-        *
-    from
-        BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_TRANSACTION_MONTHLY
-),
-
-payroll_actuals as (
-    select
-        --A few employees had transactions in multiple payrolls in the same week
-        max(TR.PAYROLL_TYPE) as PAYROLL_TYPE,
-        max(TR.PAY_FREQUENCY) as PAY_FREQUENCY,
-        TR.WORKER_CODE as WORKER_CODE,
-        -- TR.TRANSACTION_TYPE,        
-        -- case when TR.PAY_FREQUENCY in ('Weekly', 'Fortnightly') then
-        --           last_day(TR.PAY_END_DATE_FOR_PREVIOUS_EARNINGS, 'week') 
-        --      else
-        --           last_day(TR.PAY_END_DATE_FOR_PREVIOUS_EARNINGS, 'month') 
-        --      end as END_OF_WEEK_DATE,
-        last_day(TR.PAY_END_DATE_FOR_PREVIOUS_EARNINGS, 'week') as END_OF_WEEK_DATE,
-        --sum fhours where iudtranstype is 55, 12, 11, 1, 0 OR paycomponents = Normal Pay, Government Paid Parental Leave, Govt Paid Parental, Backpay Paid Parental Leave
-        sum(
-            case
-                when TPC.SALARY = true then TR.AMOUNT
-                else 0
-            end
-        ) as SALARY_ACTUALS,
-        --sum famount where iudtranstype is 7,4 or 3 EXCEPT paycomponents = GGOVPPARLV, GPPL, GBPAYPPLV and Overtime Allowances
-        sum(
-            case
-                when TPC.ALLOWANCES = true then TR.AMOUNT
-                else 0
-            end
-        ) as ALLOWANCE_ACTUALS,
-        --sum fhours where iudtranstype is 55, 12, 11, 1, 0 OR paycomponents = Normal Pay, Government Paid Parental Leave, Govt Paid Parental, Backpay Paid Parental Leave
-        sum(
-            case
-                when TPC.NORMAL_HOURS = true then TR.HOURS
-                else 0
-            end
-        ) as NORMAL_HOURS_ACTUALS,
-        --sum fhours where paycomponents = overtime reference table
-        sum(
-            case
-                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = false then TR.HOURS
-                --For Koroit Only check that location = 350 or KOR
-                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = true and TR.LOCATION = '350' then TR.HOURS
-                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = true and TR.LOCATION = 'KOR' then TR.HOURS
-                else 0
-            end
-        ) as OVERTIME_HOURS_ACTUALS,
-        --sum fhours where paycomponents = overtime reference table
-        sum(
-            case
-                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = false then TR.AMOUNT
-                --For Koroit Only check that location = 350 or KOR
-                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = true and TR.LOCATION = '350' then TR.AMOUNT
-                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = true and TR.LOCATION = 'KOR' then TR.AMOUNT
-                else 0
-            end
-        ) as OVERTIME_COSTS_ACTUALS,
-        --[Payroll Tax %] x SUM OF Components as per Taxable reference table
-        sum(
-            case
-                when TPC.PAYROLL_TAX = true then to_number(
-                    TR.AMOUNT * ifnull(
-                        ifnull(PTL.PAYROLL_TAX_PERCENT, PTS.PAYROLL_TAX_PERCENT),
-                        0
-                    ) / 100,
-                    20,
-                    2
-                )
-                else 0
-            end
-        ) as PAYROLL_TAX_ACTUALS,
-        --using BEGA_HR_DATA_{{ env }}.CONTROL.REF_PAYROLL_TAX prioritise Location match or else match Location.State with State
-        max(
-            ifnull(PTL.PAYROLL_TAX_PERCENT, PTS.PAYROLL_TAX_PERCENT)
-        ) as PAYROLL_TAX_PERCENT,
-        --TODO - Not confirmed
-        -- sum(
-        --     case
-        --         when TR.TRANSACTION_TYPE in ('Annual Leave') then TR.AMOUNT
-        --         else 0
-        --     end
-        -- ) as ON_COSTS_AL_ACTUALS,
-        0 as ON_COSTS_AL_ACTUALS,
-        --TODO - Not confirmed
-        -- sum(
-        --     case
-        --         when TR.TRANSACTION_TYPE in ('Long Service Leave') then TR.AMOUNT
-        --         else 0
-        --     end
-        -- ) as ON_COSTS_LSL_ACTUALS,
-        0 as ON_COSTS_LSL_ACTUALS,
-        --sum famount where iudtranstype is 15
-        sum(
-            case
-                when TPC.SUPER = true then TR.AMOUNT
-                else 0
-            end
-        ) as ON_COSTS_SUPER_ACTUALS,
-        -- SUM of [Payroll Tax Actuals] + [On Costs AL Actuals] + [On Costs LSL Actuals] + [On costs super Actuals]
-        PAYROLL_TAX_ACTUALS + ON_COSTS_AL_ACTUALS + ON_COSTS_LSL_ACTUALS + ON_COSTS_SUPER_ACTUALS as ON_COSTS_ACTUALS
-    from
-        employee_trans TR
-        left join BEGA_HR_DATA_{{ env }}.CONTROL.PAYROLL_TRANSACTION_PARAMETERS TPC on TR.TRANSACTION_TYPE = TPC.TRANSACTION_TYPE_DESC
-        and TR.PAY_COMPONENT_ADD_DED_CODE = TPC.PAY_COMPONENT and ifnull(TR.LEAVE_REASON_CODE,'') = ifnull(TPC.LEAVE_REASON_CODE,'')
-        left join BEGA_HR_DATA_{{ env }}.CONTROL.REF_PAYROLL_TAX PTS on case
-            when TR.LOCATION not in ('PCA', '500') then TR.PAYROLL_TAX_CODE
-            else null
-        end = PTS.LOCATION_STATE
-        left join BEGA_HR_DATA_{{ env }}.CONTROL.REF_PAYROLL_TAX PTL on case
-            when TR.LOCATION = 'PCA' then 'Kingaroy'
-            else case
-                when TR.LOCATION = '500' then 'Tatura'
-                else null
-            end
-        end = PTL.LOCATION_NAME
-    group by
-        all
-)
-SELECT
-    TR.PAYROLL_TYPE,
-    MD5(TR.PAY_FREQUENCY) as pay_frequency_key,
-    TR.WORKER_CODE,
-    WIR.POSITION_CODE,
-    WIR.POSITION_ID,
-    WIR.POSITION_SKEY,
-    WIR.WORKER_POSITION_SKEY,
-    WIR.WORKER_SKEY,
-    WIR.WORKER_ID,
-    WIR.LOCATION_ID,
-    WIR.LOCATION_SKEY,
-    WIR.TEAM_ID,
-    WIR.TEAM_SKEY,
-    WIR.DEPARTMENT_SKEY,
-    WIR.DEPARTMENT_ID,
-    WIR.COST_CENTRE_SKEY as COST_CENTRE_SKEY,
-    WIR.COST_CENTRE_ID as COST_CENTRE_ID,
-    WIR.PAY_RATE_TYPE,
-    WIR.PAY_RATE_TYPE_KEY,  
-    WIR.WORKER_POSITION_END,
-    -- TR.TRANSACTION_TYPE,    
-    TR.END_OF_WEEK_DATE,
-    to_char(END_OF_WEEK_DATE, 'YYYYMMDD') as WEEK_END_DATE_KEY,    
-    TR.SALARY_ACTUALS,
-    TR.ALLOWANCE_ACTUALS,
-    TR.ON_COSTS_ACTUALS,
-    TR.NORMAL_HOURS_ACTUALS,
-    TR.OVERTIME_HOURS_ACTUALS,
-    TR.OVERTIME_COSTS_ACTUALS,
-    TR.PAYROLL_TAX_ACTUALS,
-    TR.PAYROLL_TAX_PERCENT,
-    TR.ON_COSTS_AL_ACTUALS,
-    TR.ON_COSTS_LSL_ACTUALS,
-    TR.ON_COSTS_SUPER_ACTUALS
-FROM
-    payroll_actuals TR
-    inner join BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_WIDE WIR on TR.WORKER_CODE = WIR.WORKER_CODE 
-        and last_day(WIR.WORKER_POSITION_START, 'week') <= TR.END_OF_WEEK_DATE 
-        and last_day(WIR.WORKER_POSITION_END, 'week') >= TR.END_OF_WEEK_DATE 
-    
-;
 
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_TRANSACTION(
 	WEEK_END_DATE,
@@ -12776,6 +12566,195 @@ select
 from BEGA_HR_DATA_{{ env }}.RAW_HISTORY.PAYROLL_MONTHLY_WORKER_HISTORY
 
 ;
+
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2025(
+	FISCAL_YEAR,
+	TERM_DATE,
+	M_3_FINANCE_LOCATION,
+	MANAGER_POSITION_F,
+	FS_CC_BUILD,
+	COUNT,
+	JOB_FAMILY_C,
+	JOB_REQ,
+	CC_NAME,
+	POSITION_CODE,
+	EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
+	TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
+	TFR,
+	TERM_REPORT_30_01_2024,
+	PROJECT_APPLE_CHERRY,
+	TERMINATION_TYPE,
+	SUB_STRUCTURE,
+	LIVING_AWAY_FROM_HOME_ALLOWANCE_LAFHA_,
+	M_3_DIVISION_CURRENT_,
+	DELAYED_CLOSURES_MONTHS_,
+	SALARY_PLAN_BASE_AMOUNT,
+	FS_CC_CAT,
+	SITE,
+	REM_REPORT_POS_ID,
+	BUSINESS_UNIT,
+	SUPER_ON_STI_,
+	POSITION_ID_PER_GO_LIVE_OBT_DATA,
+	SICK_LEAVE_LIABILITY,
+	SALARY_CONTINUANCE,
+	FS_LOC,
+	COMP_GRADE,
+	EMPLOYEE_CODE_CALC_F,
+	ON_CALL_ALLOWANCE,
+	EMPLOYEE_IN_TERM_REPORT,
+	FIRST_AID_ALLOWANCE,
+	SUPERVISORY_ORG_F,
+	TOTAL_ALLOWANCES,
+	BUSINESS_TITLE_F,
+	AL_LIABILITY,
+	TFR_MIDPOINT,
+	TERM_TYPE,
+	MANAGER_NAME_CAL_F,
+	WORKER_CODE,
+	TFR_M,
+	FS_CC,
+	MONTHLY_SUPER,
+	INCUMBENT_TFR,
+	POSITION_EXISTS_IN_F_24_ORIGINAL_BUDGET,
+	ERP_COST_CENTRE,
+	LSL_LIABILITY,
+	MONTHLY_BDD_CAR_ALLOWANCE,
+	TERMINATION_DATE,
+	TREATMENT_OD,
+	TOTAL_SUPER_BASE_ALLOWANCE_LSL,
+	SUPERANNUATION_IN_TFR,
+	STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
+	TARGET_BONUS_PERCENT,
+	OBT_V_RR_CHECK,
+	STATE,
+	FS_BUSINESS_UNIT,
+	FS_CC_ENTITY,
+	BOARD_ALLOWANCE,
+	SUP_ORG_REF_ID,
+	EMPLOYEE_PER_GO_LIVE_OBT_DATA,
+	BUSINESS_MOTOR_VEHICLE_ALLOWANCE,
+	POSITION_CODE_EXISTS_IN_REM_REPORT,
+	JOB_CLASSIFICATIONS_C,
+	COMPANY_F,
+	MANAGER_POSITION_ID_F,
+	EMPLOYEE_GROUP,
+	REM_REPORT_START_DATE,
+	HIGHER_DUTIES_ALLOWANCE_,
+	EFFECTIVE_DATE,
+	RECONCILE_AGAINST_WEEKLY_REM_REPORT_ID_,
+	DEPTH_LEVEL,
+	FS_CC_STATE,
+	SHIFT_ALLOWANCE_,
+	EMPLOYEE_NAME_CALC_F,
+	CHANGE_TYPE,
+	NIL_TFR_Q_2_F_IMPACT,
+	RECONCILE_AGAINST_WEEKLY_REM_REPORT_NAME_,
+	_30_01_REM_REPORT,
+	FS_CC_DIV,
+	MONTHLY_BASE_SALARY,
+	PAYROLL_TAX,
+	EMPLOYEE_EXISTS_IN_REM_REPORT,
+	BDD_CAR_ALLOWANCE,
+	_FIVETRAN_SYNCED
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as
+
+select
+       cast('2025' as number(4)) as fiscal_year,
+       null as TERM_DATE,    
+       null as M_3_FINANCE_LOCATION,
+       a.MANAGER_POSITION_F as MANAGER_POSITION_F,
+       null as FS_CC_BUILD,
+       0 as count,
+       null as JOB_FAMILY_C,
+       null as JOB_REQ,
+       cc   as CC_NAME,
+       a.position_id as POSITION_CODE,
+       a.employee_id as EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
+       a.TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL:: number(9,3) as TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
+       0 as TFR,
+       null as TERM_REPORT_30_01_2024,
+       null PROJECT_APPLE_CHERRY,
+       a.TERMINATION_TYPE as TERMINATION_TYPE,
+       0 as SUB_STRUCTURE,
+       0 as LIVING_AWAY_FROM_HOME_ALLOWANCE_LAFHA_,
+       0 as M_3_DIVISION_CURRENT_,
+       null as DELAYED_CLOSURES_MONTHS_,
+       a.FY_25_BASE_SALARY:: number(9,2) as SALARY_PLAN_BASE_AMOUNT,
+       null as FS_CC_CAT,
+       null as SITE,
+       null as REM_REPORT_POS_ID,
+       null as BUSINESS_UNIT,
+       a.SUPER_ON_STI_:: number(9,3) as SUPER_ON_STI_,
+       null as POSITION_ID_PER_GO_LIVE_OBT_DATA,
+       a.SICK_LEAVE_LIABILITY:: number(3,2) as SICK_LEAVE_LIABILITY,
+       a.SALARY_CONTINUANCE:: number(9,3) as SALARY_CONTINUANCE,
+       null as FS_LOC,
+       null as COMP_GRADE,
+       null as EMPLOYEE_CODE_CALC_F,
+       a.ON_CALL_ALLOWANCE:: number(9,2) as ON_CALL_ALLOWANCE,
+       null as EMPLOYEE_IN_TERM_REPORT,
+       0 as FIRST_AID_ALLOWANCE,
+       null as SUPERVISORY_ORG_F,
+       a.TOTAL_ALLOWANCES:: number(9,2) as TOTAL_ALLOWANCES,
+       null as BUSINESS_TITLE_F,
+       a.AL_LIABILITY:: number(9,3) as AL_LIABILITY,
+       a.TFR_MIDPOINT:: number(9,2) as TFR_MIDPOINT,
+       null TERM_TYPE,
+       null MANAGER_NAME_CAL_F,
+       a.employee_id as WORKER_CODE,
+       0 as TFR_M,
+       0 as FS_CC,
+       a.FY_25_MONTHLY_SUPER_11_5_:: number(9,2) as MONTHLY_SUPER,
+       null as INCUMBENT_TFR,
+       null as POSITION_EXISTS_IN_F_24_ORIGINAL_BUDGET,
+       null as ERP_COST_CENTRE,
+       a.LSL_LIABILITY:: number(9,3) as LSL_LIABILITY,
+       a.FY_25_MONTHLY_BDD_CAR_ALLOWANCE:: number(9,2) as MONTHLY_BDD_CAR_ALLOWANCE,
+       null as TERMINATION_DATE,         
+       null as TREATMENT_OD,
+       a.TOTAL_SUPER_BASE_ALLOWANCE_LSL:: number(9,3) as TOTAL_SUPER_BASE_ALLOWANCE_LSL,
+       0 as SUPERANNUATION_IN_TFR,
+       a.STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX:: number(9,2) as STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
+       0 as TARGET_BONUS_PERCENT, 
+       0 as OBT_V_RR_CHECK,
+       null as STATE,
+       null as FS_BUSINESS_UNIT,
+       null as FS_CC_ENTITY,
+       a.BOARD_ALLOWANCE:: number(9,2) as BOARD_ALLOWANCE,
+       null as SUP_ORG_REF_ID,
+       null as EMPLOYEE_PER_GO_LIVE_OBT_DATA,
+       a.BUSINESS_MOTOR_VEHICLE_ALLOWANCE:: number(9,2) BUSINESS_MOTOR_VEHICLE_ALLOWANCE,
+       null as POSITION_CODE_EXISTS_IN_REM_REPORT,
+       null as JOB_CLASSIFICATIONS_C,
+       null as COMPANY_F,
+       null as MANAGER_POSITION_ID_F,
+       null as EMPLOYEE_GROUP,
+       null as REM_REPORT_START_DATE,       
+       a.HIGHER_DUTIES_ALLOWANCE_:: number(9,2) as HIGHER_DUTIES_ALLOWANCE_,
+       null as EFFECTIVE_DATE,        
+       null reconcile_against_weekly_rem_report_id_,
+       0 as DEPTH_LEVEL,
+       null as FS_CC_STATE,
+       a.SHIFT_ALLOWANCE_:: number(9,2) as SHIFT_ALLOWANCE_,
+       a.employee_name as EMPLOYEE_NAME_CALC_F,
+       null as CHANGE_TYPE,
+       null as NIL_TFR_Q_2_F_IMPACT,
+       null as RECONCILE_AGAINST_WEEKLY_REM_REPORT_NAME_,
+       null as _30_01_rem_report,
+       null as FS_CC_DIV,
+       replace(a.FY_25_MONTHLY_BASE_SALARY_WITH_REM_INCREASE,'TBC','0'):: number(9,2) as MONTHLY_BASE_SALARY,
+       a.PAYROLL_TAX:: number(9,2) as PAYROLL_TAX,
+       null EMPLOYEE_EXISTS_IN_REM_REPORT,
+       a.FY_25_MONTHLY_BDD_CAR_ALLOWANCE:: number(9,2) BDD_CAR_ALLOWANCE,
+       a._fivetran_synced as _FIVETRAN_SYNCED
+       -- TODO-LATER: concerns around new objects regularly created
+from BEGA_HR_LANDING_{{ env }}.{{ env }}_SPO_SNOWFLAKE_FINANCE.FY_25_BUDGET_24_04_2024_FY_25_BUDGET A
+order by _LINE
+limit 1000000000 offset 9 
+
+ ;
+ 
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET(
 	FISCAL_YEAR,
 	MANAGER_POSITION_F,
@@ -13147,193 +13126,7 @@ from BEGA_HR_LANDING_{{ env }}.{{ env }}_SPO_SNOWFLAKE_FINANCE.FY_24_OBT_BUDGET_
  order by _LINE
  limit 1000000000 offset 9       -- TODO-LATER: remove limitation
 ;
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.POSITION_BUDGET_2025(
-	FISCAL_YEAR,
-	TERM_DATE,
-	M_3_FINANCE_LOCATION,
-	MANAGER_POSITION_F,
-	FS_CC_BUILD,
-	COUNT,
-	JOB_FAMILY_C,
-	JOB_REQ,
-	CC_NAME,
-	POSITION_CODE,
-	EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
-	TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
-	TFR,
-	TERM_REPORT_30_01_2024,
-	PROJECT_APPLE_CHERRY,
-	TERMINATION_TYPE,
-	SUB_STRUCTURE,
-	LIVING_AWAY_FROM_HOME_ALLOWANCE_LAFHA_,
-	M_3_DIVISION_CURRENT_,
-	DELAYED_CLOSURES_MONTHS_,
-	SALARY_PLAN_BASE_AMOUNT,
-	FS_CC_CAT,
-	SITE,
-	REM_REPORT_POS_ID,
-	BUSINESS_UNIT,
-	SUPER_ON_STI_,
-	POSITION_ID_PER_GO_LIVE_OBT_DATA,
-	SICK_LEAVE_LIABILITY,
-	SALARY_CONTINUANCE,
-	FS_LOC,
-	COMP_GRADE,
-	EMPLOYEE_CODE_CALC_F,
-	ON_CALL_ALLOWANCE,
-	EMPLOYEE_IN_TERM_REPORT,
-	FIRST_AID_ALLOWANCE,
-	SUPERVISORY_ORG_F,
-	TOTAL_ALLOWANCES,
-	BUSINESS_TITLE_F,
-	AL_LIABILITY,
-	TFR_MIDPOINT,
-	TERM_TYPE,
-	MANAGER_NAME_CAL_F,
-	WORKER_CODE,
-	TFR_M,
-	FS_CC,
-	MONTHLY_SUPER,
-	INCUMBENT_TFR,
-	POSITION_EXISTS_IN_F_24_ORIGINAL_BUDGET,
-	ERP_COST_CENTRE,
-	LSL_LIABILITY,
-	MONTHLY_BDD_CAR_ALLOWANCE,
-	TERMINATION_DATE,
-	TREATMENT_OD,
-	TOTAL_SUPER_BASE_ALLOWANCE_LSL,
-	SUPERANNUATION_IN_TFR,
-	STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
-	TARGET_BONUS_PERCENT,
-	OBT_V_RR_CHECK,
-	STATE,
-	FS_BUSINESS_UNIT,
-	FS_CC_ENTITY,
-	BOARD_ALLOWANCE,
-	SUP_ORG_REF_ID,
-	EMPLOYEE_PER_GO_LIVE_OBT_DATA,
-	BUSINESS_MOTOR_VEHICLE_ALLOWANCE,
-	POSITION_CODE_EXISTS_IN_REM_REPORT,
-	JOB_CLASSIFICATIONS_C,
-	COMPANY_F,
-	MANAGER_POSITION_ID_F,
-	EMPLOYEE_GROUP,
-	REM_REPORT_START_DATE,
-	HIGHER_DUTIES_ALLOWANCE_,
-	EFFECTIVE_DATE,
-	RECONCILE_AGAINST_WEEKLY_REM_REPORT_ID_,
-	DEPTH_LEVEL,
-	FS_CC_STATE,
-	SHIFT_ALLOWANCE_,
-	EMPLOYEE_NAME_CALC_F,
-	CHANGE_TYPE,
-	NIL_TFR_Q_2_F_IMPACT,
-	RECONCILE_AGAINST_WEEKLY_REM_REPORT_NAME_,
-	_30_01_REM_REPORT,
-	FS_CC_DIV,
-	MONTHLY_BASE_SALARY,
-	PAYROLL_TAX,
-	EMPLOYEE_EXISTS_IN_REM_REPORT,
-	BDD_CAR_ALLOWANCE,
-	_FIVETRAN_SYNCED
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as
 
-select
-       cast('2025' as number(4)) as fiscal_year,
-       null as TERM_DATE,    
-       null as M_3_FINANCE_LOCATION,
-       a.MANAGER_POSITION_F as MANAGER_POSITION_F,
-       null as FS_CC_BUILD,
-       0 as count,
-       null as JOB_FAMILY_C,
-       null as JOB_REQ,
-       cc   as CC_NAME,
-       a.position_id as POSITION_CODE,
-       a.employee_id as EMPLOYEE_ID_PER_GO_LIVE_OBT_DATA,
-       a.TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL:: number(9,3) as TOTAL_SUPER_BASE_STI_ALLOWANCE_LSL,
-       0 as TFR,
-       null as TERM_REPORT_30_01_2024,
-       null PROJECT_APPLE_CHERRY,
-       a.TERMINATION_TYPE as TERMINATION_TYPE,
-       0 as SUB_STRUCTURE,
-       0 as LIVING_AWAY_FROM_HOME_ALLOWANCE_LAFHA_,
-       0 as M_3_DIVISION_CURRENT_,
-       null as DELAYED_CLOSURES_MONTHS_,
-       a.FY_25_BASE_SALARY:: number(9,2) as SALARY_PLAN_BASE_AMOUNT,
-       null as FS_CC_CAT,
-       null as SITE,
-       null as REM_REPORT_POS_ID,
-       null as BUSINESS_UNIT,
-       a.SUPER_ON_STI_:: number(9,3) as SUPER_ON_STI_,
-       null as POSITION_ID_PER_GO_LIVE_OBT_DATA,
-       a.SICK_LEAVE_LIABILITY:: number(3,2) as SICK_LEAVE_LIABILITY,
-       a.SALARY_CONTINUANCE:: number(9,3) as SALARY_CONTINUANCE,
-       null as FS_LOC,
-       null as COMP_GRADE,
-       null as EMPLOYEE_CODE_CALC_F,
-       a.ON_CALL_ALLOWANCE:: number(9,2) as ON_CALL_ALLOWANCE,
-       null as EMPLOYEE_IN_TERM_REPORT,
-       0 as FIRST_AID_ALLOWANCE,
-       null as SUPERVISORY_ORG_F,
-       a.TOTAL_ALLOWANCES:: number(9,2) as TOTAL_ALLOWANCES,
-       null as BUSINESS_TITLE_F,
-       a.AL_LIABILITY:: number(9,3) as AL_LIABILITY,
-       a.TFR_MIDPOINT:: number(9,2) as TFR_MIDPOINT,
-       null TERM_TYPE,
-       null MANAGER_NAME_CAL_F,
-       a.employee_id as WORKER_CODE,
-       0 as TFR_M,
-       0 as FS_CC,
-       a.FY_25_MONTHLY_SUPER_11_5_:: number(9,2) as MONTHLY_SUPER,
-       null as INCUMBENT_TFR,
-       null as POSITION_EXISTS_IN_F_24_ORIGINAL_BUDGET,
-       null as ERP_COST_CENTRE,
-       a.LSL_LIABILITY:: number(9,3) as LSL_LIABILITY,
-       a.FY_25_MONTHLY_BDD_CAR_ALLOWANCE:: number(9,2) as MONTHLY_BDD_CAR_ALLOWANCE,
-       null as TERMINATION_DATE,         
-       null as TREATMENT_OD,
-       a.TOTAL_SUPER_BASE_ALLOWANCE_LSL:: number(9,3) as TOTAL_SUPER_BASE_ALLOWANCE_LSL,
-       0 as SUPERANNUATION_IN_TFR,
-       a.STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX:: number(9,2) as STI_OPPORTUNITY_BASE_SUPER_PAYROLL_TAX,
-       0 as TARGET_BONUS_PERCENT, 
-       0 as OBT_V_RR_CHECK,
-       null as STATE,
-       null as FS_BUSINESS_UNIT,
-       null as FS_CC_ENTITY,
-       a.BOARD_ALLOWANCE:: number(9,2) as BOARD_ALLOWANCE,
-       null as SUP_ORG_REF_ID,
-       null as EMPLOYEE_PER_GO_LIVE_OBT_DATA,
-       a.BUSINESS_MOTOR_VEHICLE_ALLOWANCE:: number(9,2) BUSINESS_MOTOR_VEHICLE_ALLOWANCE,
-       null as POSITION_CODE_EXISTS_IN_REM_REPORT,
-       null as JOB_CLASSIFICATIONS_C,
-       null as COMPANY_F,
-       null as MANAGER_POSITION_ID_F,
-       null as EMPLOYEE_GROUP,
-       null as REM_REPORT_START_DATE,       
-       a.HIGHER_DUTIES_ALLOWANCE_:: number(9,2) as HIGHER_DUTIES_ALLOWANCE_,
-       null as EFFECTIVE_DATE,        
-       null reconcile_against_weekly_rem_report_id_,
-       0 as DEPTH_LEVEL,
-       null as FS_CC_STATE,
-       a.SHIFT_ALLOWANCE_:: number(9,2) as SHIFT_ALLOWANCE_,
-       a.employee_name as EMPLOYEE_NAME_CALC_F,
-       null as CHANGE_TYPE,
-       null as NIL_TFR_Q_2_F_IMPACT,
-       null as RECONCILE_AGAINST_WEEKLY_REM_REPORT_NAME_,
-       null as _30_01_rem_report,
-       null as FS_CC_DIV,
-       replace(a.FY_25_MONTHLY_BASE_SALARY_WITH_REM_INCREASE,'TBC','0'):: number(9,2) as MONTHLY_BASE_SALARY,
-       a.PAYROLL_TAX:: number(9,2) as PAYROLL_TAX,
-       null EMPLOYEE_EXISTS_IN_REM_REPORT,
-       a.FY_25_MONTHLY_BDD_CAR_ALLOWANCE:: number(9,2) BDD_CAR_ALLOWANCE,
-       a._fivetran_synced as _FIVETRAN_SYNCED
-       -- TODO-LATER: concerns around new objects regularly created
-from BEGA_HR_LANDING_{{ env }}.{{ env }}_SPO_SNOWFLAKE_FINANCE.FY_25_BUDGET_24_04_2024_FY_25_BUDGET A
-order by _LINE
-limit 1000000000 offset 9 
-
- ;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.WORKER_EXTERNAL_INVOICE_PROGRAMMED(
 	BILLING_COMPANY_ADDRESS,
 	BILL_NAME,
@@ -14038,183 +13831,7 @@ WHERE
     WORKER_EXTERNAL_CODE <> 'Total'  
 
 ;
-create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.WORKER_EXTERNAL_WIDE(
-	END_OF_WEEK_DATE,
-	WORKER_POSITION_SKEY,
-	WORKER_SKEY,
-	WORKER_ID,
-	WORKER_EXTERNAL_CODE,
-	FIRST_NAME,
-	LAST_NAME,
-	FULL_NAME,
-	EMAIL_ADDRESS,
-	WORKER_SOURCE_KEY,
-	WORKER_SOURCE_NAME,
-	LABOUR_PROVIDER_KEY,
-	LABOUR_PROVIDER_NAME,
-	WORKER_MANAGER_SKEY,
-	WORKER_MANAGER_ID,
-	MANAGER_FULL_NAME,
-	POSITION_TITLE,
-	PAY_RATE_TYPE,
-	PAY_RATE_TYPE_KEY,
-	LOCATION_ID,
-	LOCATION_SKEY,
-	TEAM_ID,
-	TEAM_SKEY,
-	DEPARTMENT_ID,
-	DEPARTMENT_SKEY,
-	COST_CENTRE_ID,
-	COST_CENTRE_SKEY,
-	HEADCOUNT_ACTUAL,
-	HEADCOUNT_HOURS_ACTUAL,
-	HEADCOUNT_FTE_ACTUAL,
-	IS_CURRENT,
-	VERSION_TIMESTAMP
-) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
- as
 
-with
-    weekly_external as (
-        select
-            i.END_OF_WEEK_DATE,
-            i.WORKER_EXTERNAL_CODE,
-            'External' as WORKER_SOURCE_NAME,
-            'Programmed' AS LABOUR_PROVIDER_NAME,
-            MAX_BY(i.FIRST_NAME, i.FULL_NAME) AS FIRST_NAME,
-            MAX_BY(i.LAST_NAME, i.FULL_NAME) AS LAST_NAME,
-            MAX(i.FULL_NAME) AS FULL_NAME,
-            MAX_BY(i.MANAGER_FULL_NAME, i.FULL_NAME) as MANAGER_FULL_NAME,
-            MAX_BY(i.POSITION_TITLE, i.FULL_NAME) as POSITION_TITLE,
-            SUM(
-                i.PAY_QUANTITY
-                    * par.MULTIPLIER
-                ) AS HEADCOUNT_HOURS_ACTUAL,
-            SUM(
-                i.PAY_QUANTITY
-                    * par.MULTIPLIER
-                    / par.DIVISOR
-                ) AS HEADCOUNT_FTE_ACTUAL,
-            MAX(i.VERSION_TIMESTAMP) as VERSION_TIMESTAMP
-        from
-            BEGA_HR_DATA_{{ env }}.STAGING.WORKER_EXTERNAL_INVOICE_PROGRAMMED as i
-            inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER_WORKER_EXTERNAL_CALCULATION as par on
-                par.LABOUR_PROVIDER = LABOUR_PROVIDER_NAME
-                and par.ITEM_TYPE = i.PAY_TYPE
-                and par.IS_CONSIDERED
-        group by all
-
-        --
-        union all
-        --
-        
-        select
-            i.END_OF_WEEK_DATE,
-            i.WORKER_EXTERNAL_CODE,
-            'External' as WORKER_SOURCE_NAME,
-            'Randstad' AS LABOUR_PROVIDER_NAME,
-            MAX(i.FIRST_NAME) AS FIRST_NAME,
-            MAX_BY(i.LAST_NAME, i.FIRST_NAME) AS LAST_NAME,
-            MAX_BY(i.FULL_NAME, i.FIRST_NAME) AS FULL_NAME,
-            MAX_BY(i.MANAGER_FULL_NAME, i.FIRST_NAME) as MANAGER_FULL_NAME,
-            MAX_BY(i.POSITION_TITLE, i.FIRST_NAME) as POSITION_TITLE,
-            SUM(
-                i.CHARGE_QUANTITY
-                    * par.MULTIPLIER
-                ) AS HEADCOUNT_HOURS_ACTUAL,
-            SUM(
-                i.CHARGE_QUANTITY
-                    * par.MULTIPLIER
-                    / par.DIVISOR
-                ) AS HEADCOUNT_FTE_ACTUAL,
-            MAX(i.VERSION_TIMESTAMP) as VERSION_TIMESTAMP
-        from
-            BEGA_HR_DATA_{{ env }}.STAGING.WORKER_EXTERNAL_INVOICE_RANDSTAD as i
-            inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER_WORKER_EXTERNAL_CALCULATION as par on
-                par.LABOUR_PROVIDER = LABOUR_PROVIDER_NAME
-                and par.ITEM_TYPE = i.PRODUCT_NAME
-                and par.IS_CONSIDERED
-        group by all
-        ),
-
-    manager_by_name_dedupl as (
-        select
-            FULL_NAME,
-
-            MAX(WORKER_ID) as WORKER_ID,
-            MAX_BY(WORKER_SKEY, WORKER_ID) as WORKER_SKEY,
-            MAX_BY(LOCATION_ID, WORKER_ID) as LOCATION_ID,
-            MAX_BY(LOCATION_SKEY, WORKER_ID) as LOCATION_SKEY,
-            MAX_BY(TEAM_ID, WORKER_ID) as TEAM_ID,
-            MAX_BY(TEAM_SKEY, WORKER_ID) as TEAM_SKEY,
-            MAX_BY(DEPARTMENT_ID, WORKER_ID) as DEPARTMENT_ID,
-            MAX_BY(DEPARTMENT_SKEY, WORKER_ID) as DEPARTMENT_SKEY,
-            MAX_BY(COST_CENTRE_ID, WORKER_ID) as COST_CENTRE_ID,
-            MAX_BY(COST_CENTRE_SKEY, WORKER_ID) as COST_CENTRE_SKEY
-        from
-            BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_WIDE as wpi
-        group by all
-    )
-
-select
-    w.END_OF_WEEK_DATE,
-    MD5(CONCAT(
-        w.WORKER_SOURCE_NAME, 
-        '|', 
-        w.WORKER_EXTERNAL_CODE,
-        '|',
-        w.END_OF_WEEK_DATE      -- position
-        )) as WORKER_POSITION_SKEY,
-    MD5(CONCAT(w.WORKER_SOURCE_NAME, '|', w.WORKER_EXTERNAL_CODE)) as WORKER_SKEY,
-    MD5(CONCAT(w.WORKER_SOURCE_NAME, '|', w.WORKER_EXTERNAL_CODE)) AS WORKER_ID,
-    w.WORKER_EXTERNAL_CODE,
-    w.FIRST_NAME,
-    w.LAST_NAME,
-    w.FULL_NAME,
-    NULL as EMAIL_ADDRESS,
-
-    MD5(w.WORKER_SOURCE_NAME) as WORKER_SOURCE_KEY,
-    w.WORKER_SOURCE_NAME,
-    MD5(w.LABOUR_PROVIDER_NAME) as LABOUR_PROVIDER_KEY,
-    w.LABOUR_PROVIDER_NAME,
-    
-    COALESCE(man.WORKER_SKEY, MD5(k.PARAMETER_VALUE)) as WORKER_MANAGER_SKEY,
-    man.WORKER_ID as WORKER_MANAGER_ID,
-    w.MANAGER_FULL_NAME,
-
-    w.POSITION_TITLE,
-
-    par_cont.PARAMETER_VALUE as PAY_RATE_TYPE,
-    MD5(PAY_RATE_TYPE) AS PAY_RATE_TYPE_KEY,
-
-    man.LOCATION_ID,
-    COALESCE(man.LOCATION_SKEY, MD5(k.PARAMETER_VALUE)) as LOCATION_SKEY,
-    man.TEAM_ID,
-    COALESCE(man.TEAM_SKEY, MD5(k.PARAMETER_VALUE)) as TEAM_SKEY,
-    man.DEPARTMENT_ID,
-    COALESCE(man.DEPARTMENT_SKEY, MD5(k.PARAMETER_VALUE)) as DEPARTMENT_SKEY,
-    man.COST_CENTRE_ID,
-    COALESCE(man.COST_CENTRE_SKEY, MD5(k.PARAMETER_VALUE)) as COST_CENTRE_SKEY,
-    
-    1 as HEADCOUNT_ACTUAL,
-    w.HEADCOUNT_HOURS_ACTUAL,
-    w.HEADCOUNT_FTE_ACTUAL,
-    
-    TRUE AS IS_CURRENT,
-    w.VERSION_TIMESTAMP
-from
-    weekly_external as w
-    
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
-        k.PARAMETER_TYPE = 'UNLINKED_KEY'
-        
-    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_cont on
-        par_cont.PARAMETER_TYPE = 'WORKER_PAY_RATE_TYPE_CONTINGENT'
-        
-    left join manager_by_name_dedupl as man
-        on w.manager_full_name = man.full_name    
-
-;
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_COMPENSATION_HISTORY(
 	WORKER_ID,
 	EMPLOYEE_COMPENSATION_TOTAL_BASE_PAY,
@@ -14624,6 +14241,395 @@ from            -- TODO: Check (provided by Sue): 3716 active internals + 200 is
         
 ;
 
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.WORKER_EXTERNAL_WIDE(
+	END_OF_WEEK_DATE,
+	WORKER_POSITION_SKEY,
+	WORKER_SKEY,
+	WORKER_ID,
+	WORKER_EXTERNAL_CODE,
+	FIRST_NAME,
+	LAST_NAME,
+	FULL_NAME,
+	EMAIL_ADDRESS,
+	WORKER_SOURCE_KEY,
+	WORKER_SOURCE_NAME,
+	LABOUR_PROVIDER_KEY,
+	LABOUR_PROVIDER_NAME,
+	WORKER_MANAGER_SKEY,
+	WORKER_MANAGER_ID,
+	MANAGER_FULL_NAME,
+	POSITION_TITLE,
+	PAY_RATE_TYPE,
+	PAY_RATE_TYPE_KEY,
+	LOCATION_ID,
+	LOCATION_SKEY,
+	TEAM_ID,
+	TEAM_SKEY,
+	DEPARTMENT_ID,
+	DEPARTMENT_SKEY,
+	COST_CENTRE_ID,
+	COST_CENTRE_SKEY,
+	HEADCOUNT_ACTUAL,
+	HEADCOUNT_HOURS_ACTUAL,
+	HEADCOUNT_FTE_ACTUAL,
+	IS_CURRENT,
+	VERSION_TIMESTAMP
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as
+
+with
+    weekly_external as (
+        select
+            i.END_OF_WEEK_DATE,
+            i.WORKER_EXTERNAL_CODE,
+            'External' as WORKER_SOURCE_NAME,
+            'Programmed' AS LABOUR_PROVIDER_NAME,
+            MAX_BY(i.FIRST_NAME, i.FULL_NAME) AS FIRST_NAME,
+            MAX_BY(i.LAST_NAME, i.FULL_NAME) AS LAST_NAME,
+            MAX(i.FULL_NAME) AS FULL_NAME,
+            MAX_BY(i.MANAGER_FULL_NAME, i.FULL_NAME) as MANAGER_FULL_NAME,
+            MAX_BY(i.POSITION_TITLE, i.FULL_NAME) as POSITION_TITLE,
+            SUM(
+                i.PAY_QUANTITY
+                    * par.MULTIPLIER
+                ) AS HEADCOUNT_HOURS_ACTUAL,
+            SUM(
+                i.PAY_QUANTITY
+                    * par.MULTIPLIER
+                    / par.DIVISOR
+                ) AS HEADCOUNT_FTE_ACTUAL,
+            MAX(i.VERSION_TIMESTAMP) as VERSION_TIMESTAMP
+        from
+            BEGA_HR_DATA_{{ env }}.STAGING.WORKER_EXTERNAL_INVOICE_PROGRAMMED as i
+            inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER_WORKER_EXTERNAL_CALCULATION as par on
+                par.LABOUR_PROVIDER = LABOUR_PROVIDER_NAME
+                and par.ITEM_TYPE = i.PAY_TYPE
+                and par.IS_CONSIDERED
+        group by all
+
+        --
+        union all
+        --
+        
+        select
+            i.END_OF_WEEK_DATE,
+            i.WORKER_EXTERNAL_CODE,
+            'External' as WORKER_SOURCE_NAME,
+            'Randstad' AS LABOUR_PROVIDER_NAME,
+            MAX(i.FIRST_NAME) AS FIRST_NAME,
+            MAX_BY(i.LAST_NAME, i.FIRST_NAME) AS LAST_NAME,
+            MAX_BY(i.FULL_NAME, i.FIRST_NAME) AS FULL_NAME,
+            MAX_BY(i.MANAGER_FULL_NAME, i.FIRST_NAME) as MANAGER_FULL_NAME,
+            MAX_BY(i.POSITION_TITLE, i.FIRST_NAME) as POSITION_TITLE,
+            SUM(
+                i.CHARGE_QUANTITY
+                    * par.MULTIPLIER
+                ) AS HEADCOUNT_HOURS_ACTUAL,
+            SUM(
+                i.CHARGE_QUANTITY
+                    * par.MULTIPLIER
+                    / par.DIVISOR
+                ) AS HEADCOUNT_FTE_ACTUAL,
+            MAX(i.VERSION_TIMESTAMP) as VERSION_TIMESTAMP
+        from
+            BEGA_HR_DATA_{{ env }}.STAGING.WORKER_EXTERNAL_INVOICE_RANDSTAD as i
+            inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER_WORKER_EXTERNAL_CALCULATION as par on
+                par.LABOUR_PROVIDER = LABOUR_PROVIDER_NAME
+                and par.ITEM_TYPE = i.PRODUCT_NAME
+                and par.IS_CONSIDERED
+        group by all
+        ),
+
+    manager_by_name_dedupl as (
+        select
+            FULL_NAME,
+
+            MAX(WORKER_ID) as WORKER_ID,
+            MAX_BY(WORKER_SKEY, WORKER_ID) as WORKER_SKEY,
+            MAX_BY(LOCATION_ID, WORKER_ID) as LOCATION_ID,
+            MAX_BY(LOCATION_SKEY, WORKER_ID) as LOCATION_SKEY,
+            MAX_BY(TEAM_ID, WORKER_ID) as TEAM_ID,
+            MAX_BY(TEAM_SKEY, WORKER_ID) as TEAM_SKEY,
+            MAX_BY(DEPARTMENT_ID, WORKER_ID) as DEPARTMENT_ID,
+            MAX_BY(DEPARTMENT_SKEY, WORKER_ID) as DEPARTMENT_SKEY,
+            MAX_BY(COST_CENTRE_ID, WORKER_ID) as COST_CENTRE_ID,
+            MAX_BY(COST_CENTRE_SKEY, WORKER_ID) as COST_CENTRE_SKEY
+        from
+            BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_WIDE as wpi
+        group by all
+    )
+
+select
+    w.END_OF_WEEK_DATE,
+    MD5(CONCAT(
+        w.WORKER_SOURCE_NAME, 
+        '|', 
+        w.WORKER_EXTERNAL_CODE,
+        '|',
+        w.END_OF_WEEK_DATE      -- position
+        )) as WORKER_POSITION_SKEY,
+    MD5(CONCAT(w.WORKER_SOURCE_NAME, '|', w.WORKER_EXTERNAL_CODE)) as WORKER_SKEY,
+    MD5(CONCAT(w.WORKER_SOURCE_NAME, '|', w.WORKER_EXTERNAL_CODE)) AS WORKER_ID,
+    w.WORKER_EXTERNAL_CODE,
+    w.FIRST_NAME,
+    w.LAST_NAME,
+    w.FULL_NAME,
+    NULL as EMAIL_ADDRESS,
+
+    MD5(w.WORKER_SOURCE_NAME) as WORKER_SOURCE_KEY,
+    w.WORKER_SOURCE_NAME,
+    MD5(w.LABOUR_PROVIDER_NAME) as LABOUR_PROVIDER_KEY,
+    w.LABOUR_PROVIDER_NAME,
+    
+    COALESCE(man.WORKER_SKEY, MD5(k.PARAMETER_VALUE)) as WORKER_MANAGER_SKEY,
+    man.WORKER_ID as WORKER_MANAGER_ID,
+    w.MANAGER_FULL_NAME,
+
+    w.POSITION_TITLE,
+
+    par_cont.PARAMETER_VALUE as PAY_RATE_TYPE,
+    MD5(PAY_RATE_TYPE) AS PAY_RATE_TYPE_KEY,
+
+    man.LOCATION_ID,
+    COALESCE(man.LOCATION_SKEY, MD5(k.PARAMETER_VALUE)) as LOCATION_SKEY,
+    man.TEAM_ID,
+    COALESCE(man.TEAM_SKEY, MD5(k.PARAMETER_VALUE)) as TEAM_SKEY,
+    man.DEPARTMENT_ID,
+    COALESCE(man.DEPARTMENT_SKEY, MD5(k.PARAMETER_VALUE)) as DEPARTMENT_SKEY,
+    man.COST_CENTRE_ID,
+    COALESCE(man.COST_CENTRE_SKEY, MD5(k.PARAMETER_VALUE)) as COST_CENTRE_SKEY,
+    
+    1 as HEADCOUNT_ACTUAL,
+    w.HEADCOUNT_HOURS_ACTUAL,
+    w.HEADCOUNT_FTE_ACTUAL,
+    
+    TRUE AS IS_CURRENT,
+    w.VERSION_TIMESTAMP
+from
+    weekly_external as w
+    
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as k on
+        k.PARAMETER_TYPE = 'UNLINKED_KEY'
+        
+    inner join BEGA_HR_DATA_{{ env }}.CONTROL.PARAMETER as par_cont on
+        par_cont.PARAMETER_TYPE = 'WORKER_PAY_RATE_TYPE_CONTINGENT'
+        
+    left join manager_by_name_dedupl as man
+        on w.manager_full_name = man.full_name    
+
+;
+
+create or replace dynamic table BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_ACTUALS(
+	PAYROLL_TYPE,
+	PAY_FREQUENCY_KEY,
+	WORKER_CODE,
+	POSITION_CODE,
+	POSITION_ID,
+	POSITION_SKEY,
+	WORKER_POSITION_SKEY,
+	WORKER_SKEY,
+	WORKER_ID,
+	LOCATION_ID,
+	LOCATION_SKEY,
+	TEAM_ID,
+	TEAM_SKEY,
+	DEPARTMENT_SKEY,
+	DEPARTMENT_ID,
+	COST_CENTRE_SKEY,
+	COST_CENTRE_ID,
+	PAY_RATE_TYPE,
+	PAY_RATE_TYPE_KEY,
+	WORKER_POSITION_END,
+	END_OF_WEEK_DATE,
+	WEEK_END_DATE_KEY,
+	SALARY_ACTUALS,
+	ALLOWANCE_ACTUALS,
+	ON_COSTS_ACTUALS,
+	NORMAL_HOURS_ACTUALS,
+	OVERTIME_HOURS_ACTUALS,
+	OVERTIME_COSTS_ACTUALS,
+	PAYROLL_TAX_ACTUALS,
+	PAYROLL_TAX_PERCENT,
+	ON_COSTS_AL_ACTUALS,
+	ON_COSTS_LSL_ACTUALS,
+	ON_COSTS_SUPER_ACTUALS
+) target_lag = '2 hours' refresh_mode = AUTO initialize = ON_CREATE warehouse = COMPUTE_WH
+ as
+
+with employee_trans as (
+    select
+        *
+    from
+        BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_TRANSACTION_WEEKLY
+    UNION ALL
+    select
+        *
+    from
+        BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_TRANSACTION_FORTNIGHTLY
+    UNION ALL
+    select
+        *
+    from
+        BEGA_HR_DATA_{{ env }}.STAGING.PAYROLL_TRANSACTION_MONTHLY
+),
+
+payroll_actuals as (
+    select
+        --A few employees had transactions in multiple payrolls in the same week
+        max(TR.PAYROLL_TYPE) as PAYROLL_TYPE,
+        max(TR.PAY_FREQUENCY) as PAY_FREQUENCY,
+        TR.WORKER_CODE as WORKER_CODE,
+        -- TR.TRANSACTION_TYPE,        
+        -- case when TR.PAY_FREQUENCY in ('Weekly', 'Fortnightly') then
+        --           last_day(TR.PAY_END_DATE_FOR_PREVIOUS_EARNINGS, 'week') 
+        --      else
+        --           last_day(TR.PAY_END_DATE_FOR_PREVIOUS_EARNINGS, 'month') 
+        --      end as END_OF_WEEK_DATE,
+        last_day(TR.PAY_END_DATE_FOR_PREVIOUS_EARNINGS, 'week') as END_OF_WEEK_DATE,
+        --sum fhours where iudtranstype is 55, 12, 11, 1, 0 OR paycomponents = Normal Pay, Government Paid Parental Leave, Govt Paid Parental, Backpay Paid Parental Leave
+        sum(
+            case
+                when TPC.SALARY = true then TR.AMOUNT
+                else 0
+            end
+        ) as SALARY_ACTUALS,
+        --sum famount where iudtranstype is 7,4 or 3 EXCEPT paycomponents = GGOVPPARLV, GPPL, GBPAYPPLV and Overtime Allowances
+        sum(
+            case
+                when TPC.ALLOWANCES = true then TR.AMOUNT
+                else 0
+            end
+        ) as ALLOWANCE_ACTUALS,
+        --sum fhours where iudtranstype is 55, 12, 11, 1, 0 OR paycomponents = Normal Pay, Government Paid Parental Leave, Govt Paid Parental, Backpay Paid Parental Leave
+        sum(
+            case
+                when TPC.NORMAL_HOURS = true then TR.HOURS
+                else 0
+            end
+        ) as NORMAL_HOURS_ACTUALS,
+        --sum fhours where paycomponents = overtime reference table
+        sum(
+            case
+                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = false then TR.HOURS
+                --For Koroit Only check that location = 350 or KOR
+                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = true and TR.LOCATION = '350' then TR.HOURS
+                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = true and TR.LOCATION = 'KOR' then TR.HOURS
+                else 0
+            end
+        ) as OVERTIME_HOURS_ACTUALS,
+        --sum fhours where paycomponents = overtime reference table
+        sum(
+            case
+                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = false then TR.AMOUNT
+                --For Koroit Only check that location = 350 or KOR
+                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = true and TR.LOCATION = '350' then TR.AMOUNT
+                when TPC.OVERTIME = true and TPC.KOROIT_ONLY = true and TR.LOCATION = 'KOR' then TR.AMOUNT
+                else 0
+            end
+        ) as OVERTIME_COSTS_ACTUALS,
+        --[Payroll Tax %] x SUM OF Components as per Taxable reference table
+        sum(
+            case
+                when TPC.PAYROLL_TAX = true then to_number(
+                    TR.AMOUNT * ifnull(
+                        ifnull(PTL.PAYROLL_TAX_PERCENT, PTS.PAYROLL_TAX_PERCENT),
+                        0
+                    ) / 100,
+                    20,
+                    2
+                )
+                else 0
+            end
+        ) as PAYROLL_TAX_ACTUALS,
+        --using BEGA_HR_DATA_{{ env }}.CONTROL.REF_PAYROLL_TAX prioritise Location match or else match Location.State with State
+        max(
+            ifnull(PTL.PAYROLL_TAX_PERCENT, PTS.PAYROLL_TAX_PERCENT)
+        ) as PAYROLL_TAX_PERCENT,
+        --TODO - Not confirmed
+        -- sum(
+        --     case
+        --         when TR.TRANSACTION_TYPE in ('Annual Leave') then TR.AMOUNT
+        --         else 0
+        --     end
+        -- ) as ON_COSTS_AL_ACTUALS,
+        0 as ON_COSTS_AL_ACTUALS,
+        --TODO - Not confirmed
+        -- sum(
+        --     case
+        --         when TR.TRANSACTION_TYPE in ('Long Service Leave') then TR.AMOUNT
+        --         else 0
+        --     end
+        -- ) as ON_COSTS_LSL_ACTUALS,
+        0 as ON_COSTS_LSL_ACTUALS,
+        --sum famount where iudtranstype is 15
+        sum(
+            case
+                when TPC.SUPER = true then TR.AMOUNT
+                else 0
+            end
+        ) as ON_COSTS_SUPER_ACTUALS,
+        -- SUM of [Payroll Tax Actuals] + [On Costs AL Actuals] + [On Costs LSL Actuals] + [On costs super Actuals]
+        PAYROLL_TAX_ACTUALS + ON_COSTS_AL_ACTUALS + ON_COSTS_LSL_ACTUALS + ON_COSTS_SUPER_ACTUALS as ON_COSTS_ACTUALS
+    from
+        employee_trans TR
+        left join BEGA_HR_DATA_{{ env }}.CONTROL.PAYROLL_TRANSACTION_PARAMETERS TPC on TR.TRANSACTION_TYPE = TPC.TRANSACTION_TYPE_DESC
+        and TR.PAY_COMPONENT_ADD_DED_CODE = TPC.PAY_COMPONENT and ifnull(TR.LEAVE_REASON_CODE,'') = ifnull(TPC.LEAVE_REASON_CODE,'')
+        left join BEGA_HR_DATA_{{ env }}.CONTROL.REF_PAYROLL_TAX PTS on case
+            when TR.LOCATION not in ('PCA', '500') then TR.PAYROLL_TAX_CODE
+            else null
+        end = PTS.LOCATION_STATE
+        left join BEGA_HR_DATA_{{ env }}.CONTROL.REF_PAYROLL_TAX PTL on case
+            when TR.LOCATION = 'PCA' then 'Kingaroy'
+            else case
+                when TR.LOCATION = '500' then 'Tatura'
+                else null
+            end
+        end = PTL.LOCATION_NAME
+    group by
+        all
+)
+SELECT
+    TR.PAYROLL_TYPE,
+    MD5(TR.PAY_FREQUENCY) as pay_frequency_key,
+    TR.WORKER_CODE,
+    WIR.POSITION_CODE,
+    WIR.POSITION_ID,
+    WIR.POSITION_SKEY,
+    WIR.WORKER_POSITION_SKEY,
+    WIR.WORKER_SKEY,
+    WIR.WORKER_ID,
+    WIR.LOCATION_ID,
+    WIR.LOCATION_SKEY,
+    WIR.TEAM_ID,
+    WIR.TEAM_SKEY,
+    WIR.DEPARTMENT_SKEY,
+    WIR.DEPARTMENT_ID,
+    WIR.COST_CENTRE_SKEY as COST_CENTRE_SKEY,
+    WIR.COST_CENTRE_ID as COST_CENTRE_ID,
+    WIR.PAY_RATE_TYPE,
+    WIR.PAY_RATE_TYPE_KEY,  
+    WIR.WORKER_POSITION_END,
+    -- TR.TRANSACTION_TYPE,    
+    TR.END_OF_WEEK_DATE,
+    to_char(END_OF_WEEK_DATE, 'YYYYMMDD') as WEEK_END_DATE_KEY,    
+    TR.SALARY_ACTUALS,
+    TR.ALLOWANCE_ACTUALS,
+    TR.ON_COSTS_ACTUALS,
+    TR.NORMAL_HOURS_ACTUALS,
+    TR.OVERTIME_HOURS_ACTUALS,
+    TR.OVERTIME_COSTS_ACTUALS,
+    TR.PAYROLL_TAX_ACTUALS,
+    TR.PAYROLL_TAX_PERCENT,
+    TR.ON_COSTS_AL_ACTUALS,
+    TR.ON_COSTS_LSL_ACTUALS,
+    TR.ON_COSTS_SUPER_ACTUALS
+FROM
+    payroll_actuals TR
+    inner join BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_WIDE WIR on TR.WORKER_CODE = WIR.WORKER_CODE 
+        and last_day(WIR.WORKER_POSITION_START, 'week') <= TR.END_OF_WEEK_DATE 
+        and last_day(WIR.WORKER_POSITION_END, 'week') >= TR.END_OF_WEEK_DATE 
+    
+;
 
 -- select WORKER_CODE, POSITION_ID, count(*) as ROW_COUNT
 -- from BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_WIDE

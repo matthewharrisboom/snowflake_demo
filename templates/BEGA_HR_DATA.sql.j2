@@ -14633,26 +14633,6 @@ FROM
     
 ;
 
--- select WORKER_CODE, POSITION_ID, count(*) as ROW_COUNT
--- from BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_WIDE
--- group by all
--- having count(*) > 1
--- ;
-
--- select *
--- from BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_WIDE
--- where
---     WORKER_CODE = '90000185'
---     and POSITION_ID = '281536fc528210013012b6f64ada0000'
--- ;
-
--- select *
--- from BEGA_HR_DATA_{{ env }}.STAGING.WORKER_INTERNAL_WIDE
--- where
---     last_day(CURRENT_DATE, 'week') between WORKER_POSITION_START and WORKER_POSITION_END
-;
-
-
 create or replace schema BEGA_HR_DATA_{{ env }}.TRANSFORMED;
 
 create or replace dynamic table BEGA_HR_DATA_{{ env }}.TRANSFORMED.COST_CENTRE(

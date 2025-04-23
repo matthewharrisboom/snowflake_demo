@@ -40,14 +40,14 @@ jobs:
       - name: Test installation
         run:  ~/snowflake/snowsql -v
 
-      #- name: Deploy MASTER Landing SQL to Snowflake
-      #  run: ~/snowflake/snowsql -f rendered/BEGA_MASTER_LANDING_${{ inputs.my_env || 'dev' }}.sql
+      - name: Deploy MASTER Landing SQL to Snowflake
+        run: ~/snowflake/snowsql -f rendered/BEGA_MASTER_LANDING_${{ inputs.my_env || 'dev' }}.sql
 
-      #- name: Deploy MASTER Data SQL to Snowflake
-      #  run: ~/snowflake/snowsql -f rendered/BEGA_MASTER_DATA_${{ inputs.my_env || 'dev' }}.sql
+      - name: Deploy MASTER Data SQL to Snowflake
+        run: ~/snowflake/snowsql -f rendered/BEGA_MASTER_DATA_${{ inputs.my_env || 'dev' }}.sql
 
-      #- name: Deploy HR Landing SQL to Snowflake
-      #  run: ~/snowflake/snowsql -f rendered/BEGA_HR_LANDING_${{ inputs.my_env || 'dev' }}.sql
+      - name: Deploy HR Landing SQL to Snowflake
+        run: ~/snowflake/snowsql -f rendered/BEGA_HR_LANDING_${{ inputs.my_env || 'dev' }}.sql
 
       - name: Deploy HR Data SQL to Snowflake
         run: ~/snowflake/snowsql -f rendered/BEGA_HR_DATA_${{ inputs.my_env || 'dev' }}.sql
